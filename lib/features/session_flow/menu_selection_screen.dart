@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../app/routes.dart';
 import '../../application/gathering_controller.dart';
 import '../../domain/temporary_menu.dart';
 
 class MenuSelectionScreen extends ConsumerWidget {
-  final Map<String, String> gatheringData;
+  final GatheringDetailsArgs details;
 
-  const MenuSelectionScreen({super.key, required this.gatheringData});
+  const MenuSelectionScreen({super.key, required this.details});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -98,12 +100,16 @@ class MenuSelectionScreen extends ConsumerWidget {
                   ref
                       .read(gatheringProvider.notifier)
                       .startGathering(
-                        name: gatheringData['gatheringName']!,
-                        restaurantName: gatheringData['restaurantName']!,
-                        hostName: gatheringData['hostName']!,
+                        name: details.gatheringName,
+                        restaurantName: details.restaurantName,
+                        hostName: details.hostName,
                         menu: temporaryMenu,
                       );
-                  Navigator.pushNamed(context, '/edit_menu');
+                  // Starting the gathering moves its lifecycle to
+                  // menuDraft; the router's redirect now sends every
+                  // pre-gathering route here, so clear them from the
+                  // stack rather than pushing on top of them.
+                  context.go(Routes.editMenu);
                 },
                 icon: const Icon(Icons.list_alt),
                 label: const Text('Use Temporary Menu'),

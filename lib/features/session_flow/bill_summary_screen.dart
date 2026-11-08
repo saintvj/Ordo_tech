@@ -141,11 +141,11 @@ class BillSummaryScreen extends ConsumerWidget {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () {
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      '/',
-                      (route) => false,
-                    );
+                    // closeGathering() returns the gathering state to
+                    // null; the router's redirect listener reacts to
+                    // that immediately and sends navigation to home,
+                    // since a null gathering makes every other route
+                    // (including this one) unreachable.
                     ref.read(gatheringProvider.notifier).closeGathering();
                   },
                   child: const Text('Close Session'),

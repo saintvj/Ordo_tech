@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../app/routes.dart';
 
 class PassPhoneScreen extends StatelessWidget {
   const PassPhoneScreen({super.key});
@@ -6,7 +8,8 @@ class PassPhoneScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Going back would reopen the previous person's order screen.
+    // Reached via go from the order screen, so there is nothing beneath
+    // this screen in history to go back to.
     return PopScope(
       canPop: false,
       child: Scaffold(
@@ -37,7 +40,10 @@ class PassPhoneScreen extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/participant_name');
+                      // go (not push): keeps the back stack at one entry
+                      // per cycle instead of growing with each participant.
+                      // See participant_name_screen.dart.
+                      context.go(Routes.participantName);
                     },
                     child: const Text('Next Person'),
                   ),
@@ -47,7 +53,10 @@ class PassPhoneScreen extends StatelessWidget {
                   width: double.infinity,
                   child: TextButton(
                     onPressed: () {
-                      Navigator.pushNamed(context, '/review_orders');
+                      // push (not go): back from Review Orders returns
+                      // here, so a late arrival can still be added with
+                      // "Next Person". The stack is at most two deep.
+                      context.push(Routes.reviewOrders);
                     },
                     child: const Text('Finish Ordering'),
                   ),

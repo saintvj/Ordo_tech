@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../app/routes.dart';
 
 class CreateGatheringScreen extends StatefulWidget {
   const CreateGatheringScreen({super.key});
@@ -15,12 +17,14 @@ class _CreateGatheringScreenState extends State<CreateGatheringScreen> {
 
   void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
-      final gatheringData = {
-        'gatheringName': _gatheringNameController.text.trim(),
-        'restaurantName': _restaurantNameController.text.trim(),
-        'hostName': _hostNameController.text.trim(),
-      };
-      Navigator.pushNamed(context, '/menu_selection', arguments: gatheringData);
+      context.push(
+        Routes.menuSelection,
+        extra: GatheringDetailsArgs(
+          gatheringName: _gatheringNameController.text.trim(),
+          restaurantName: _restaurantNameController.text.trim(),
+          hostName: _hostNameController.text.trim(),
+        ),
+      );
     }
   }
 

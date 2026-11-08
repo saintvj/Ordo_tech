@@ -48,6 +48,12 @@ All of these will eventually map down to the same unified `Menu` domain object.
 ## Waiter Mode Organization
 The Waiter Mode groups data strictly by **MenuItem** rather than by participant. This allows the host to quickly see how many of each item were ordered and tick them off as they are served to the respective participants.
 
+## Navigation
+Routing uses go_router (`lib/app/router.dart`, paths in `lib/app/routes.dart`). Screens read state from `gatheringProvider`; routes carry only small typed `*Args` objects in `extra`, never a gathering.
+- **Lifecycle redirect**: every navigation runs `_redirectForLifecycle`. With no gathering, only Home, Create Gathering and Menu Selection are reachable. Otherwise only the current stage's routes are reachable (menuDraft: Edit Menu; ordering: Participant Name, Participant Order, Pass Phone, Review Orders; serving: Waiter Mode, Session Summary, Bill Summary), and anything else redirects to that stage's entry point.
+- **Refresh**: the router re-runs the redirect when the gathering's status changes, so `confirmMenu()`, `startServing()` and `closeGathering()` move the user on their own. Other edits don't refresh the router.
+- **Back stack**: stage changes and the pass-and-play cycle use `go`, which replaces history, so the stack doesn't grow with participants. Edits from Review Orders, Review Orders from Pass Phone, and the screens after Waiter Mode use `push`, so back returns to the previous screen.
+
 ## State Management & Boundaries
 - **State**: The active gathering lives in `gatheringProvider`. Screens `ref.watch` it and call the controller; routes carry no session objects.
 - **Menu Locking**: `confirmMenu()` moves the gathering to `ordering`. Menu edits are rejected from then on, and the first participant's screen blocks back navigation to the editor.

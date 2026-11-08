@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../app/routes.dart';
 import '../../application/gathering_controller.dart';
 import '../../domain/money.dart';
 import 'participant_order_screen.dart';
@@ -73,10 +75,11 @@ class ReviewOrdersScreen extends ConsumerWidget {
                           alignment: Alignment.centerLeft,
                           child: TextButton.icon(
                             onPressed: () {
-                              Navigator.pushNamed(
-                                context,
-                                '/participant_order',
-                                arguments: ParticipantOrderArgs.edit(
+                              // push (not go): this edit should return here
+                              // afterwards, unlike the pass-and-play cycle.
+                              context.push(
+                                Routes.participantOrder,
+                                extra: ParticipantOrderArgs.edit(
                                   participant.id,
                                 ),
                               );
@@ -111,14 +114,13 @@ class ReviewOrdersScreen extends ConsumerWidget {
                   onPressed: gathering.orderLines.isEmpty
                       ? null
                       : () {
+                          // startServing() moves the gathering to serving;
+                          // the router's redirect will refuse every
+                          // ordering-stage route from now on. go clears
+                          // the ordering screens (including any pushed
+                          // edits) from the back stack in one step.
                           ref.read(gatheringProvider.notifier).startServing();
-                          // Ordering is over: clear the ordering screens from
-                          // the back stack.
-                          Navigator.pushNamedAndRemoveUntil(
-                            context,
-                            '/waiter_mode',
-                            (route) => route.isFirst,
-                          );
+                          context.go(Routes.waiterMode);
                         },
                   icon: const Icon(Icons.play_arrow_rounded),
                   label: const Text('Start Waiter Mode'),

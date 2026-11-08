@@ -1,26 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../application/gathering_controller.dart';
+import 'package:go_router/go_router.dart';
+import '../../app/routes.dart';
 import 'participant_order_screen.dart';
 
-class ParticipantNameScreen extends ConsumerStatefulWidget {
+class ParticipantNameScreen extends StatefulWidget {
   const ParticipantNameScreen({super.key});
 
   @override
-  ConsumerState<ParticipantNameScreen> createState() =>
-      _ParticipantNameScreenState();
+  State<ParticipantNameScreen> createState() => _ParticipantNameScreenState();
 }
 
-class _ParticipantNameScreenState extends ConsumerState<ParticipantNameScreen> {
+class _ParticipantNameScreenState extends State<ParticipantNameScreen> {
   final TextEditingController _nameController = TextEditingController();
 
   void _next() {
     final name = _nameController.text.trim();
     if (name.isNotEmpty) {
-      Navigator.pushNamed(
-        context,
-        '/participant_order',
-        arguments: ParticipantOrderArgs.newParticipant(name),
+      // go (not push): each participant's turn replaces the previous one
+      // in history, so the back stack does not grow with the number of
+      // participants. See pass_phone_screen.dart for the matching half of
+      // this cycle.
+      context.go(
+        Routes.participantOrder,
+        extra: ParticipantOrderArgs.newParticipant(name),
       );
     }
   }
@@ -34,17 +36,17 @@ class _ParticipantNameScreenState extends ConsumerState<ParticipantNameScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // The menu is locked once ordering starts, so the first participant
-    // cannot go back to the menu editor.
-    final hasParticipants = ref.watch(
-      gatheringProvider.select((g) => g?.participants.isNotEmpty ?? false),
-    );
+    // This screen is only ever reached via context.go, which replaces
+    // history rather than pushing, so there is no previous ordering-flow
+    // screen left to pop back into; see the comment in _next() and in
+    // pass_phone_screen.dart. canPop is false regardless of participant
+    // count, and the app bar shows no back button to match.
     return PopScope(
-      canPop: hasParticipants,
+      canPop: false,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Join Gathering'),
-          automaticallyImplyLeading: hasParticipants,
+          automaticallyImplyLeading: false,
         ),
         body: SafeArea(
           child: Center(

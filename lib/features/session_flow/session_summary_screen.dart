@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../app/routes.dart';
 import '../../application/gathering_controller.dart';
 
 class SessionSummaryScreen extends ConsumerWidget {
@@ -94,7 +96,7 @@ class SessionSummaryScreen extends ConsumerWidget {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/bill_summary');
+                    context.push(Routes.billSummary);
                   },
                   child: const Text('View Bill'),
                 ),

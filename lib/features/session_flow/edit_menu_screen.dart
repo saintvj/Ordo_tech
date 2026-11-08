@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../app/routes.dart';
 import '../../application/gathering_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/money.dart';
@@ -262,7 +264,10 @@ class EditMenuScreen extends ConsumerWidget {
                   onPressed: menu.hasItems
                       ? () {
                           notifier.confirmMenu();
-                          Navigator.pushNamed(context, '/participant_name');
+                          // Confirming the menu moves the gathering into
+                          // ordering, so the editor itself becomes
+                          // unreachable; go rather than push.
+                          context.go(Routes.participantName);
                         }
                       : null,
                   child: const Text('Confirm Menu'),

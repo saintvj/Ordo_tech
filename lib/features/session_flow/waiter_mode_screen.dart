@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../app/routes.dart';
 import '../../application/gathering_controller.dart';
 import '../../domain/models.dart';
 
@@ -41,7 +43,7 @@ class WaiterModeScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/session_summary');
+                context.push(Routes.sessionSummary);
               },
               child: const Text('Finish Service'),
             ),
