@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/gathering_controller.dart';
+import '../../domain/bill.dart';
 import '../../domain/money.dart';
 
 class BillSummaryScreen extends ConsumerWidget {
@@ -24,11 +25,11 @@ class BillSummaryScreen extends ConsumerWidget {
           ),
     ];
 
-    final subtotal = gathering.subtotalPaise;
-    // Placeholder tax rates (2.5% each) until the billing engine in v0.5
-    final cgst = percentOf(subtotal, 250);
-    final sgst = percentOf(subtotal, 250);
-    final grandTotal = subtotal + cgst + sgst;
+    final totals = BillTotals.of(gathering);
+    final subtotal = totals.subtotalPaise;
+    final cgst = totals.cgstPaise;
+    final sgst = totals.sgstPaise;
+    final grandTotal = totals.grandTotalPaise;
 
     return Scaffold(
       appBar: AppBar(
@@ -141,12 +142,13 @@ class BillSummaryScreen extends ConsumerWidget {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () {
-                    // closeGathering() returns the gathering state to
-                    // null; the router's redirect listener reacts to
-                    // that immediately and sends navigation to home,
-                    // since a null gathering makes every other route
-                    // (including this one) unreachable.
-                    ref.read(gatheringProvider.notifier).closeGathering();
+                    // completeGathering() saves the gathering as
+                    // completed (read-only, kept in history). Only once
+                    // that save succeeds is the active gathering cleared,
+                    // and the router's redirect sends navigation home. If
+                    // it fails, the bill stays and the message offers
+                    // "Try Again".
+                    ref.read(gatheringProvider.notifier).completeGathering();
                   },
                   child: const Text('Close Session'),
                 ),

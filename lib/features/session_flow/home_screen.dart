@@ -47,7 +47,11 @@ class HomeScreen extends StatelessWidget {
                     child: const Text('Start a Session'),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => context.push(Routes.history),
+                  child: const Text('Past Gatherings'),
+                ),
               ],
             ),
           ),

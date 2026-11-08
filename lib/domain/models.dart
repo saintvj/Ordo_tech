@@ -2,7 +2,17 @@ import 'package:flutter/foundation.dart';
 
 /// Lifecycle of a gathering. Each action in [GatheringController] is only
 /// allowed in one of these states.
-enum GatheringStatus { menuDraft, ordering, serving }
+///
+/// A [completed] gathering is finished and read-only; it only appears in
+/// session history.
+enum GatheringStatus {
+  menuDraft,
+  ordering,
+  serving,
+  completed;
+
+  bool get isFinished => this == completed;
+}
 
 @immutable
 class MenuItem {
@@ -157,4 +167,24 @@ class Gathering {
     participants: participants ?? this.participants,
     orderLines: orderLines ?? this.orderLines,
   );
+}
+
+/// The fields shown in session history, without the menu or orders.
+@immutable
+class GatheringSummary {
+  const GatheringSummary({
+    required this.id,
+    required this.name,
+    required this.restaurantName,
+    required this.hostName,
+    required this.createdAt,
+    required this.status,
+  });
+
+  final String id;
+  final String name;
+  final String restaurantName;
+  final String hostName;
+  final DateTime createdAt;
+  final GatheringStatus status;
 }
