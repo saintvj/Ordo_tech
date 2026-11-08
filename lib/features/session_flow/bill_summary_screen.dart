@@ -1,25 +1,34 @@
 import 'package:flutter/material.dart';
-import '../../shared/models/models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../application/gathering_controller.dart';
+import '../../domain/money.dart';
 
-class BillSummaryScreen extends StatelessWidget {
-  final Session session;
-
-  const BillSummaryScreen({super.key, required this.session});
+class BillSummaryScreen extends ConsumerWidget {
+  const BillSummaryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    
-    // Calculate totals
-    double subtotal = 0;
-    for (var order in session.orders) {
-      subtotal += order.menuItem.price;
-    }
-    
-    // Mock Taxes (2.5% each)
-    double cgst = subtotal * 0.025;
-    double sgst = subtotal * 0.025;
-    double grandTotal = subtotal + cgst + sgst;
+    final gathering = ref.watch(gatheringProvider);
+    if (gathering == null) return const Scaffold();
+
+    // One row per portion
+    final rows = [
+      for (final line in gathering.orderLines)
+        for (var i = 0; i < line.quantity; i++)
+          (
+            name: line.itemName,
+            participant:
+                gathering.findParticipant(line.participantId)?.name ?? '',
+            pricePaise: line.unitPricePaise,
+          ),
+    ];
+
+    final subtotal = gathering.subtotalPaise;
+    // Placeholder tax rates (2.5% each) until the billing engine in v0.5
+    final cgst = percentOf(subtotal, 250);
+    final sgst = percentOf(subtotal, 250);
+    final grandTotal = subtotal + cgst + sgst;
 
     return Scaffold(
       appBar: AppBar(
@@ -39,47 +48,49 @@ class BillSummaryScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          session.restaurantName,
+                          gathering.restaurantName,
                           style: theme.textTheme.headlineMedium,
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          session.gatheringName,
+                          gathering.name,
                           style: theme.textTheme.bodyMedium,
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 32),
                         const Divider(),
                         const SizedBox(height: 16),
-                        
+
                         Expanded(
                           child: ListView.builder(
-                            itemCount: session.orders.length,
+                            itemCount: rows.length,
                             itemBuilder: (context, index) {
-                              final order = session.orders[index];
+                              final row = rows[index];
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 12.0),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            order.menuItem.name,
+                                            row.name,
                                             style: theme.textTheme.titleSmall,
                                           ),
                                           Text(
-                                            order.participant.name,
+                                            row.participant,
                                             style: theme.textTheme.bodySmall,
                                           ),
                                         ],
                                       ),
                                     ),
                                     Text(
-                                      '₹${order.menuItem.price.toStringAsFixed(2)}',
+                                      formatRupees(row.pricePaise),
                                       style: theme.textTheme.titleSmall,
                                     ),
                                   ],
@@ -88,11 +99,11 @@ class BillSummaryScreen extends StatelessWidget {
                             },
                           ),
                         ),
-                        
+
                         const SizedBox(height: 16),
                         const Divider(),
                         const SizedBox(height: 16),
-                        
+
                         _buildTotalRow(context, 'Subtotal', subtotal),
                         const SizedBox(height: 8),
                         _buildTotalRow(context, 'CGST (2.5%)', cgst),
@@ -101,7 +112,7 @@ class BillSummaryScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         const Divider(),
                         const SizedBox(height: 16),
-                        
+
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -112,7 +123,7 @@ class BillSummaryScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              '₹${grandTotal.toStringAsFixed(2)}',
+                              formatRupees(grandTotal),
                               style: theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: theme.colorScheme.primary,
@@ -130,7 +141,12 @@ class BillSummaryScreen extends StatelessWidget {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () {
-                    Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/',
+                      (route) => false,
+                    );
+                    ref.read(gatheringProvider.notifier).closeGathering();
                   },
                   child: const Text('Close Session'),
                 ),
@@ -142,19 +158,13 @@ class BillSummaryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTotalRow(BuildContext context, String label, double amount) {
+  Widget _buildTotalRow(BuildContext context, String label, int amountPaise) {
     final theme = Theme.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium,
-        ),
-        Text(
-          '₹${amount.toStringAsFixed(2)}',
-          style: theme.textTheme.bodyMedium,
-        ),
+        Text(label, style: theme.textTheme.bodyMedium),
+        Text(formatRupees(amountPaise), style: theme.textTheme.bodyMedium),
       ],
     );
   }

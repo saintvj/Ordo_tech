@@ -1,28 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../shared/models/models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../application/gathering_controller.dart';
+import '../../domain/money.dart';
+import 'participant_order_screen.dart';
 
-class ReviewOrdersScreen extends StatefulWidget {
-  final Session session;
-  const ReviewOrdersScreen({super.key, required this.session});
+class ReviewOrdersScreen extends ConsumerWidget {
+  const ReviewOrdersScreen({super.key});
 
   @override
-  State<ReviewOrdersScreen> createState() => _ReviewOrdersScreenState();
-}
-
-class _ReviewOrdersScreenState extends State<ReviewOrdersScreen> {
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    
-    // Group orders by participant
-    Map<String, List<OrderItem>> itemsByParticipant = {};
-    for (var order in widget.session.orders) {
-      if (!itemsByParticipant.containsKey(order.participant.id)) {
-        itemsByParticipant[order.participant.id] = [];
-      }
-      itemsByParticipant[order.participant.id]!.add(order);
-    }
-    
+    final gathering = ref.watch(gatheringProvider);
+    if (gathering == null) return const Scaffold();
+
     return Scaffold(
       appBar: AppBar(title: const Text('Review Orders')),
       body: SafeArea(
@@ -31,22 +21,10 @@ class _ReviewOrdersScreenState extends State<ReviewOrdersScreen> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.all(24.0),
-                itemCount: widget.session.participants.length,
+                itemCount: gathering.participants.length,
                 itemBuilder: (context, index) {
-                  final participant = widget.session.participants[index];
-                  final items = itemsByParticipant[participant.id] ?? [];
-                  
-                  if (items.isEmpty) return const SizedBox.shrink();
-
-                  Map<String, int> itemCount = {};
-                  Map<String, MenuItem> itemData = {};
-                  double participantTotal = 0;
-                  
-                  for (var i in items) {
-                    participantTotal += i.menuItem.price;
-                    itemCount[i.menuItem.id] = (itemCount[i.menuItem.id] ?? 0) + 1;
-                    itemData[i.menuItem.id] = i.menuItem;
-                  }
+                  final participant = gathering.participants[index];
+                  final lines = gathering.linesFor(participant.id);
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 24.0),
@@ -63,7 +41,9 @@ class _ReviewOrdersScreenState extends State<ReviewOrdersScreen> {
                               ),
                             ),
                             Text(
-                              '₹${participantTotal.toStringAsFixed(2)}',
+                              formatRupees(
+                                gathering.subtotalFor(participant.id),
+                              ),
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -71,20 +51,18 @@ class _ReviewOrdersScreenState extends State<ReviewOrdersScreen> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        ...itemCount.keys.map((itemId) {
-                          final item = itemData[itemId]!;
-                          final count = itemCount[itemId]!;
+                        ...lines.map((line) {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8.0),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  '${item.name} × $count',
+                                  '${line.itemName} × ${line.quantity}',
                                   style: theme.textTheme.bodyMedium,
                                 ),
                                 Text(
-                                  '₹${(item.price * count).toStringAsFixed(2)}',
+                                  formatRupees(line.totalPaise),
                                   style: theme.textTheme.bodySmall,
                                 ),
                               ],
@@ -98,14 +76,10 @@ class _ReviewOrdersScreenState extends State<ReviewOrdersScreen> {
                               Navigator.pushNamed(
                                 context,
                                 '/participant_order',
-                                arguments: {
-                                  'session': widget.session,
-                                  'participant': participant,
-                                  'isEditing': true,
-                                },
-                              ).then((_) {
-                                setState(() {});
-                              });
+                                arguments: ParticipantOrderArgs.edit(
+                                  participant.id,
+                                ),
+                              );
                             },
                             icon: const Icon(Icons.edit, size: 16),
                             label: const Text('Edit'),
@@ -128,19 +102,24 @@ class _ReviewOrdersScreenState extends State<ReviewOrdersScreen> {
                     color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -5),
-                  )
+                  ),
                 ],
               ),
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () {
-                    Navigator.pushReplacementNamed(
-                      context,
-                      '/waiter_mode',
-                      arguments: widget.session,
-                    );
-                  },
+                  onPressed: gathering.orderLines.isEmpty
+                      ? null
+                      : () {
+                          ref.read(gatheringProvider.notifier).startServing();
+                          // Ordering is over: clear the ordering screens from
+                          // the back stack.
+                          Navigator.pushNamedAndRemoveUntil(
+                            context,
+                            '/waiter_mode',
+                            (route) => route.isFirst,
+                          );
+                        },
                   icon: const Icon(Icons.play_arrow_rounded),
                   label: const Text('Start Waiter Mode'),
                 ),

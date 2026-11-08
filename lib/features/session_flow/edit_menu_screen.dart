@@ -1,31 +1,23 @@
 import 'package:flutter/material.dart';
-import '../../shared/models/models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../application/gathering_controller.dart';
+import '../../domain/models.dart';
+import '../../domain/money.dart';
 
-class EditMenuScreen extends StatefulWidget {
-  final Session session;
+class EditMenuScreen extends ConsumerWidget {
+  const EditMenuScreen({super.key});
 
-  const EditMenuScreen({super.key, required this.session});
-
-  @override
-  State<EditMenuScreen> createState() => _EditMenuScreenState();
-}
-
-class _EditMenuScreenState extends State<EditMenuScreen> {
-  late Menu _menu;
-
-  @override
-  void initState() {
-    super.initState();
-    _menu = widget.session.menu;
-  }
-
-  void _addCategory() {
+  void _showCategoryDialog(
+    BuildContext context,
+    WidgetRef ref,
+    MenuCategory? category,
+  ) {
     showDialog(
       context: context,
       builder: (context) {
-        final controller = TextEditingController();
+        final controller = TextEditingController(text: category?.name ?? '');
         return AlertDialog(
-          title: const Text('Add Category'),
+          title: Text(category == null ? 'Add Category' : 'Edit Category'),
           content: TextField(
             controller: controller,
             decoration: const InputDecoration(hintText: 'Category Name'),
@@ -38,14 +30,18 @@ class _EditMenuScreenState extends State<EditMenuScreen> {
             ),
             TextButton(
               onPressed: () {
-                if (controller.text.trim().isNotEmpty) {
-                  setState(() {
-                    _menu.categories.add(MenuCategory(name: controller.text.trim(), items: []));
-                  });
+                final name = controller.text.trim();
+                if (name.isNotEmpty) {
+                  final notifier = ref.read(gatheringProvider.notifier);
+                  if (category == null) {
+                    notifier.addCategory(name);
+                  } else {
+                    notifier.renameCategory(category.id, name);
+                  }
                 }
                 Navigator.pop(context);
               },
-              child: const Text('Add'),
+              child: Text(category == null ? 'Add' : 'Save'),
             ),
           ],
         );
@@ -53,121 +49,98 @@ class _EditMenuScreenState extends State<EditMenuScreen> {
     );
   }
 
-  void _editCategory(MenuCategory category) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final controller = TextEditingController(text: category.name);
-        return AlertDialog(
-          title: const Text('Edit Category'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(hintText: 'Category Name'),
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (controller.text.trim().isNotEmpty) {
-                  setState(() {
-                    category.name = controller.text.trim();
-                  });
-                }
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _deleteCategory(MenuCategory category) {
-    setState(() {
-      _menu.categories.remove(category);
-    });
-  }
-
-  void _addMenuItem(MenuCategory category) {
-    _showItemDialog(category, null);
-  }
-
-  void _editMenuItem(MenuCategory category, MenuItem item) {
-    _showItemDialog(category, item);
-  }
-
-  void _showItemDialog(MenuCategory category, MenuItem? item) {
+  void _showItemDialog(
+    BuildContext context,
+    WidgetRef ref,
+    MenuCategory category,
+    MenuItem? item,
+  ) {
     showDialog(
       context: context,
       builder: (context) {
         final nameController = TextEditingController(text: item?.name ?? '');
-        final priceController = TextEditingController(text: item != null ? item.price.toString() : '');
-        return AlertDialog(
-          title: Text(item == null ? 'Add Item' : 'Edit Item'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Item Name'),
-                autofocus: true,
+        final priceController = TextEditingController(
+          text: item != null ? rupeesInputText(item.pricePaise) : '',
+        );
+        String? nameError;
+        String? priceError;
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text(item == null ? 'Add Item' : 'Edit Item'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Item Name',
+                    errorText: nameError,
+                  ),
+                  autofocus: true,
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: priceController,
+                  decoration: InputDecoration(
+                    labelText: 'Price',
+                    errorText: priceError,
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
               ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: priceController,
-                decoration: const InputDecoration(labelText: 'Price'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              TextButton(
+                onPressed: () {
+                  final name = nameController.text.trim();
+                  final price = parseRupees(priceController.text);
+                  setDialogState(() {
+                    nameError = name.isEmpty ? 'Enter a name' : null;
+                    priceError = price == null || price <= 0
+                        ? 'Enter a price above 0, e.g. 120 or 120.50'
+                        : null;
+                  });
+                  if (nameError != null || priceError != null) return;
+                  final notifier = ref.read(gatheringProvider.notifier);
+                  if (item == null) {
+                    notifier.addItem(
+                      category.id,
+                      name: name,
+                      pricePaise: price!,
+                    );
+                  } else {
+                    notifier.updateItem(
+                      category.id,
+                      item.id,
+                      name: name,
+                      pricePaise: price!,
+                    );
+                  }
+                  Navigator.pop(context);
+                },
+                child: const Text('Save'),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                final price = double.tryParse(priceController.text.trim()) ?? 0.0;
-                if (name.isNotEmpty && price > 0) {
-                  setState(() {
-                    if (item == null) {
-                      category.items.add(MenuItem(
-                        id: DateTime.now().microsecondsSinceEpoch.toString(),
-                        name: name,
-                        price: price,
-                      ));
-                    } else {
-                      item.name = name;
-                      item.price = price;
-                    }
-                  });
-                }
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
-            ),
-          ],
         );
       },
     );
   }
 
-  void _deleteMenuItem(MenuCategory category, MenuItem item) {
-    setState(() {
-      category.items.remove(item);
-    });
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    
+    final gathering = ref.watch(gatheringProvider);
+    if (gathering == null) return const Scaffold();
+    final menu = gathering.menu;
+    final notifier = ref.read(gatheringProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Menu'),
@@ -175,7 +148,7 @@ class _EditMenuScreenState extends State<EditMenuScreen> {
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: 'Add Category',
-            onPressed: _addCategory,
+            onPressed: () => _showCategoryDialog(context, ref, null),
           ),
         ],
       ),
@@ -185,19 +158,24 @@ class _EditMenuScreenState extends State<EditMenuScreen> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.all(16.0),
-                itemCount: _menu.categories.length,
+                itemCount: menu.categories.length,
                 itemBuilder: (context, index) {
-                  final category = _menu.categories[index];
+                  final category = menu.categories[index];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 8.0,
+                          ),
                           decoration: BoxDecoration(
                             color: theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(12),
+                            ),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -215,11 +193,16 @@ class _EditMenuScreenState extends State<EditMenuScreen> {
                                 children: [
                                   IconButton(
                                     icon: const Icon(Icons.edit, size: 20),
-                                    onPressed: () => _editCategory(category),
+                                    onPressed: () => _showCategoryDialog(
+                                      context,
+                                      ref,
+                                      category,
+                                    ),
                                   ),
                                   IconButton(
                                     icon: const Icon(Icons.delete, size: 20),
-                                    onPressed: () => _deleteCategory(category),
+                                    onPressed: () =>
+                                        notifier.deleteCategory(category.id),
                                   ),
                                 ],
                               ),
@@ -234,17 +217,23 @@ class _EditMenuScreenState extends State<EditMenuScreen> {
                         ...category.items.map((item) {
                           return ListTile(
                             title: Text(item.name),
-                            subtitle: Text('₹${item.price.toStringAsFixed(2)}'),
+                            subtitle: Text(formatRupees(item.pricePaise)),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
                                   icon: const Icon(Icons.edit, size: 20),
-                                  onPressed: () => _editMenuItem(category, item),
+                                  onPressed: () => _showItemDialog(
+                                    context,
+                                    ref,
+                                    category,
+                                    item,
+                                  ),
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.delete, size: 20),
-                                  onPressed: () => _deleteMenuItem(category, item),
+                                  onPressed: () =>
+                                      notifier.deleteItem(category.id, item.id),
                                 ),
                               ],
                             ),
@@ -253,7 +242,8 @@ class _EditMenuScreenState extends State<EditMenuScreen> {
                         Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: TextButton.icon(
-                            onPressed: () => _addMenuItem(category),
+                            onPressed: () =>
+                                _showItemDialog(context, ref, category, null),
                             icon: const Icon(Icons.add),
                             label: const Text('Add Item'),
                           ),
@@ -269,14 +259,12 @@ class _EditMenuScreenState extends State<EditMenuScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () {
-                    widget.session.menu = _menu;
-                    Navigator.pushNamed(
-                      context,
-                      '/participant_name',
-                      arguments: widget.session,
-                    );
-                  },
+                  onPressed: menu.hasItems
+                      ? () {
+                          notifier.confirmMenu();
+                          Navigator.pushNamed(context, '/participant_name');
+                        }
+                      : null,
                   child: const Text('Confirm Menu'),
                 ),
               ),

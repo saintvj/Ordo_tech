@@ -8,7 +8,9 @@ We use a feature-based folder structure designed around the linear session flow:
 - **`app/`**: Bootstrapping and routing (`app.dart`, `router.dart`).
 - **`core/`**: Themes, constants, and utilities.
 - **`features/session_flow/`**: All screens representing the step-by-step pass-and-play flow.
-- **`shared/`**: Common models (e.g., `Participant`, `OrderItem`) and widgets.
+- **`domain/`**: Immutable domain models (`models.dart`), money helpers (`money.dart`) and the starter `temporaryMenu`.
+- **`application/`**: `GatheringController`, a Riverpod `Notifier` that owns the active gathering and enforces its lifecycle.
+- **`shared/`**: Shared widgets and extensions.
 
 ## Modular Plugin Architecture
 The application is designed so that future features (modules) can be plugged in without disrupting the core offline flow. 
@@ -21,13 +23,14 @@ The application is designed so that future features (modules) can be plugged in 
 - **Restaurant Integration & Notifications**: Will allow sending the final order directly to a venue's POS.
 
 ## Core Domain Models
-We use a unified `Session` model that owns all state for the current dining session:
-- **Session**: Owns `sessionId`, `createdAt`, `participants`, `menu`, `orders`, and `servingStatus`.
-- **Menu**: The session's menu containing a list of `MenuCategory`.
-- **MenuCategory**: A named category containing a list of `MenuItem`.
-- **Participant**: Name and ID of a person in the session.
-- **MenuItem**: Available items to order, consisting of `id`, `name`, and `price`.
-- **OrderItem**: An item ordered by a specific participant. Includes an `isServed` boolean.
+All models are immutable. Screens never mutate them; they call `GatheringController` methods, which replace the state.
+- **Gathering**: Owns `id`, `createdAt`, gathering/restaurant/host names, `status`, `menu`, `participants` and `orderLines`.
+- **GatheringStatus**: `menuDraft → ordering → serving`. Each controller action is allowed in exactly one status and throws `StateError` otherwise.
+- **Menu / MenuCategory / MenuItem**: The gathering's own menu. Prices are integer paise (`pricePaise`).
+- **Participant**: Created together with their first confirmed order, never before.
+- **OrderLine**: One item ordered by one participant, with `quantity` and `servedQuantity`. The item name and unit price are copied when the order is placed.
+
+Money is always integer paise. Use `formatRupees`, `parseRupees` and `percentOf` from `domain/money.dart`; never use `double` for amounts.
 
 ## Menu Architecture & Sources
 The ordering screens consume `Menu` and `MenuItem` objects without knowing where they originated. This separation allows future menu sources to plug into the single `Menu` model. 
@@ -46,6 +49,7 @@ All of these will eventually map down to the same unified `Menu` domain object.
 The Waiter Mode groups data strictly by **MenuItem** rather than by participant. This allows the host to quickly see how many of each item were ordered and tick them off as they are served to the respective participants.
 
 ## State Management & Boundaries
-- **Menu Locking**: Once the first participant begins ordering, the session menu should be treated as locked for this session to prevent items or prices from changing underneath existing orders.
-- **Order Editing**: Orders are maintained in local state during the `ParticipantOrderScreen` editing process. Changes are only committed to the `Session` upon pressing "Confirm Order" or "Save Changes". This prevents ghost orders if a user backs out.
-- **Waiter Mode Boundary**: The transition from `ReviewOrdersScreen` to `WaiterModeScreen` represents the strict boundary between DRAFT ORDERING and SERVING. Once in Waiter Mode, the order list becomes the definitive serving source.
+- **State**: The active gathering lives in `gatheringProvider`. Screens `ref.watch` it and call the controller; routes carry no session objects.
+- **Menu Locking**: `confirmMenu()` moves the gathering to `ordering`. Menu edits are rejected from then on, and the first participant's screen blocks back navigation to the editor.
+- **Order Editing**: `ParticipantOrderScreen` keeps quantities locally and commits them on "Confirm Order" / "Save Changes" via `addParticipantWithOrder` or `replaceOrder`. Backing out commits nothing. Saving an empty order removes the participant.
+- **Waiter Mode Boundary**: `startServing()` moves the gathering to `serving` and clears the ordering screens from the back stack. Order changes are rejected from then on.

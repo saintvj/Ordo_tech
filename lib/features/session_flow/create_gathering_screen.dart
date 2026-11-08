@@ -20,11 +20,7 @@ class _CreateGatheringScreenState extends State<CreateGatheringScreen> {
         'restaurantName': _restaurantNameController.text.trim(),
         'hostName': _hostNameController.text.trim(),
       };
-      Navigator.pushNamed(
-        context,
-        '/menu_selection',
-        arguments: gatheringData,
-      );
+      Navigator.pushNamed(context, '/menu_selection', arguments: gatheringData);
     }
   }
 
@@ -39,21 +35,16 @@ class _CreateGatheringScreenState extends State<CreateGatheringScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('New Gathering'),
-      ),
+      appBar: AppBar(title: const Text('New Gathering')),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(24.0),
             children: [
-              Text(
-                'Set the stage.',
-                style: theme.textTheme.headlineMedium,
-              ),
+              Text('Set the stage.', style: theme.textTheme.headlineMedium),
               const SizedBox(height: 8),
               Text(
                 'Enter the details for your dining session.',
@@ -68,7 +59,8 @@ class _CreateGatheringScreenState extends State<CreateGatheringScreen> {
                   labelText: 'Gathering Name',
                   hintText: 'e.g., Sunday Brunch',
                 ),
-                validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                validator: (val) =>
+                    val == null || val.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 20),
               TextFormField(
@@ -77,7 +69,8 @@ class _CreateGatheringScreenState extends State<CreateGatheringScreen> {
                   labelText: 'Restaurant Name',
                   hintText: 'e.g., The French Laundry',
                 ),
-                validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                validator: (val) =>
+                    val == null || val.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 20),
               TextFormField(
@@ -86,13 +79,11 @@ class _CreateGatheringScreenState extends State<CreateGatheringScreen> {
                   labelText: 'Host Name',
                   hintText: 'Your name',
                 ),
-                validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                validator: (val) =>
+                    val == null || val.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 48),
-              FilledButton(
-                onPressed: _submit,
-                child: const Text('Continue'),
-              ),
+              FilledButton(onPressed: _submit, child: const Text('Continue')),
             ],
           ),
         ),
