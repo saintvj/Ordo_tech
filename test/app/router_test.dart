@@ -103,7 +103,10 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(currentLocation(tester), isNot(Routes.editMenu));
-        expect(currentLocation(tester), Routes.reviewOrders);
+        // Stage 3: with nobody ordered yet, ordering starts at Participant
+        // Name (previously an empty Review Orders with no way to add
+        // people).
+        expect(currentLocation(tester), Routes.participantName);
       },
     );
 

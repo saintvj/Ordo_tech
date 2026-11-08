@@ -16,6 +16,13 @@ abstract final class Routes {
   static const waiterMode = '/waiter-mode';
   static const sessionSummary = '/session-summary';
   static const billSummary = '/bill-summary';
+  static const history = '/history';
+  static const historyDetail = '/history/:id';
+  static const resume = '/resume';
+
+  /// The read-only history page for one gathering.
+  static String historyDetailFor(String gatheringId) =>
+      '$history/${Uri.encodeComponent(gatheringId)}';
 }
 
 /// The three gathering details collected on [Routes.createGathering] and

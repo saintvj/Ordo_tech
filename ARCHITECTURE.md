@@ -1,7 +1,7 @@
 # Architecture Guidelines
 
 ## Offline-First Philosophy
-Ordo is designed to be a completely offline, single-device app. We rely entirely on local, in-memory state or lightweight local storage for the duration of a dining session. No backend, no accounts, and no authentication are present in the core flow.
+Ordo is designed to be a completely offline, single-device app. Every gathering is saved on the device (SQLite via Drift) as it changes, so it survives the app closing, process death and restarts. No backend, no accounts, and no authentication are present in the core flow.
 
 ## Folder Organization
 We use a feature-based folder structure designed around the linear session flow:
@@ -10,6 +10,8 @@ We use a feature-based folder structure designed around the linear session flow:
 - **`features/session_flow/`**: All screens representing the step-by-step pass-and-play flow.
 - **`domain/`**: Immutable domain models (`models.dart`), money helpers (`money.dart`) and the starter `temporaryMenu`.
 - **`application/`**: `GatheringController`, a Riverpod `Notifier` that owns the active gathering and enforces its lifecycle.
+- **`data/`**: `GatheringRepository` (the storage interface) and `data/local/`, its Drift implementation. Only `data/local/` touches database tables.
+- **`features/history/`**: Session history, the read-only past-gathering view and the resume picker.
 - **`shared/`**: Shared widgets and extensions.
 
 ## Modular Plugin Architecture
@@ -25,7 +27,7 @@ The application is designed so that future features (modules) can be plugged in 
 ## Core Domain Models
 All models are immutable. Screens never mutate them; they call `GatheringController` methods, which replace the state.
 - **Gathering**: Owns `id`, `createdAt`, gathering/restaurant/host names, `status`, `menu`, `participants` and `orderLines`.
-- **GatheringStatus**: `menuDraft → ordering → serving`. Each controller action is allowed in exactly one status and throws `StateError` otherwise.
+- **GatheringStatus**: `menuDraft → ordering → serving → completed`. Completed gatherings are read-only and only appear in history. Each controller action is allowed in exactly one status and throws `StateError` otherwise.
 - **Menu / MenuCategory / MenuItem**: The gathering's own menu. Prices are integer paise (`pricePaise`).
 - **Participant**: Created together with their first confirmed order, never before.
 - **OrderLine**: One item ordered by one participant, with `quantity` and `servedQuantity`. The item name and unit price are copied when the order is placed.
@@ -47,6 +49,14 @@ All of these will eventually map down to the same unified `Menu` domain object.
 
 ## Waiter Mode Organization
 The Waiter Mode groups data strictly by **MenuItem** rather than by participant. This allows the host to quickly see how many of each item were ordered and tick them off as they are served to the respective participants.
+
+## Persistence
+- **Repository**: the controller saves through `gatheringRepositoryProvider` (`GatheringRepository`). `main.dart` provides `LocalGatheringRepository`; tests default to `InMemoryGatheringRepository`. A future Firestore repository implements the same interface.
+- **Saving**: every controller change calls `_update`, which sets state and queues a save. Saves run one at a time in order. A failed save is shown to the user; the in-memory state is kept.
+- **Snapshots**: a save replaces all of a gathering's rows in one transaction, so storage always holds one complete state. Completed gatherings refuse further saves.
+- **Tables**: `gatherings`; `menu_categories` and `menu_items` keyed by `(gathering_id, id)` so every gathering has its own menu; `participants`; `order_lines` (with the name/price snapshot, no foreign key to the menu). Child tables cascade from `gatherings`. Money is integer paise, enforced by CHECK constraints.
+- **Start-up**: `loadStartupState` reads (never writes). One unfinished gathering is reopened and the router shows its stage; several open the resume picker; none or a read error start at Home.
+- **Schema changes**: bump `schemaVersion`, run `dart run drift_dev make-migrations` (exports `drift_schemas/` and generates step and test scaffolding), add the step in `onUpgrade`. Steps must not drop user data. An unknown version (e.g. a downgrade) refuses to open rather than guessing.
 
 ## Navigation
 Routing uses go_router (`lib/app/router.dart`, paths in `lib/app/routes.dart`). Screens read state from `gatheringProvider`; routes carry only small typed `*Args` objects in `extra`, never a gathering.

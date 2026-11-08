@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../application/gathering_controller.dart';
 import '../domain/models.dart';
+import '../features/history/history_detail_screen.dart';
+import '../features/history/history_screen.dart';
+import '../features/history/resume_screen.dart';
 import '../features/session_flow/bill_summary_screen.dart';
 import '../features/session_flow/create_gathering_screen.dart';
 import '../features/session_flow/edit_menu_screen.dart';
@@ -35,12 +38,24 @@ const _servingRoutes = {
   Routes.billSummary,
 };
 
-/// The screen each stage should land on when a route doesn't belong to it.
-const _entryPointForStatus = {
-  GatheringStatus.menuDraft: Routes.editMenu,
-  GatheringStatus.ordering: Routes.reviewOrders,
-  GatheringStatus.serving: Routes.waiterMode,
+/// The screen a gathering should land on when the requested route doesn't
+/// belong to its stage, e.g. when it is reopened after a restart.
+///
+/// While ordering, that is Participant Name until someone has ordered, then
+/// Pass Phone, which offers both "Next Person" and "Finish Ordering". (Review
+/// Orders would be a dead end there: nothing beneath it to add people from.)
+String _entryPointFor(Gathering gathering) => switch (gathering.status) {
+  GatheringStatus.menuDraft => Routes.editMenu,
+  GatheringStatus.ordering =>
+    gathering.participants.isEmpty ? Routes.participantName : Routes.passPhone,
+  GatheringStatus.serving => Routes.waiterMode,
+  // Never active (completeGathering clears it); treated like no gathering.
+  GatheringStatus.completed => Routes.home,
 };
+
+/// Where navigation starts. `main.dart` overrides it from the saved state
+/// (see loadStartupState).
+final initialLocationProvider = Provider<String>((ref) => Routes.home);
 
 /// Notifies go_router when the gathering's lifecycle status changes (or the
 /// gathering starts or closes), so a change made by the controller - such as
@@ -63,7 +78,7 @@ class _GatheringRouterRefresh extends ChangeNotifier {
 /// [gatheringProvider] on every navigation.
 GoRouter buildRouter(Ref ref) {
   return GoRouter(
-    initialLocation: Routes.home,
+    initialLocation: ref.read(initialLocationProvider),
     refreshListenable: _GatheringRouterRefresh(ref),
     redirect: (context, state) =>
         _redirectForLifecycle(ref, state.matchedLocation),
@@ -130,6 +145,19 @@ GoRouter buildRouter(Ref ref) {
         path: Routes.billSummary,
         builder: (context, state) => const BillSummaryScreen(),
       ),
+      GoRoute(
+        path: Routes.history,
+        builder: (context, state) => const HistoryScreen(),
+      ),
+      GoRoute(
+        path: Routes.historyDetail,
+        builder: (context, state) =>
+            HistoryDetailScreen(gatheringId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: Routes.resume,
+        builder: (context, state) => const ResumeScreen(),
+      ),
     ],
   );
 }
@@ -144,27 +172,28 @@ GoRouter buildRouter(Ref ref) {
 String? _redirectForLifecycle(Ref ref, String location) {
   final gathering = ref.read(gatheringProvider);
 
-  if (gathering == null) {
-    // No active gathering: only the pre-gathering screens are reachable.
-    const allowed = {Routes.home, Routes.createGathering, Routes.menuSelection};
-    return allowed.contains(location) ? null : Routes.home;
+  if (gathering == null || gathering.status.isFinished) {
+    // No active gathering: only the pre-gathering screens, session history
+    // and the resume picker are reachable.
+    const allowed = {
+      Routes.home,
+      Routes.createGathering,
+      Routes.menuSelection,
+      Routes.history,
+      Routes.resume,
+    };
+    final isHistoryDetail = location.startsWith('${Routes.history}/');
+    return allowed.contains(location) || isHistoryDetail ? null : Routes.home;
   }
 
-  final status = gathering.status;
-
-  // Once a gathering exists, the pre-gathering screens are no longer the
-  // right place to be; send the user to where that stage actually starts.
-  if (location == Routes.home ||
-      location == Routes.createGathering ||
-      location == Routes.menuSelection) {
-    return _entryPointForStatus[status];
-  }
-
-  final belongsToStage = switch (status) {
+  final belongsToStage = switch (gathering.status) {
     GatheringStatus.menuDraft => _menuDraftRoutes.contains(location),
     GatheringStatus.ordering => _orderingRoutes.contains(location),
     GatheringStatus.serving => _servingRoutes.contains(location),
+    GatheringStatus.completed => false,
   };
 
-  return belongsToStage ? null : _entryPointForStatus[status];
+  // Everything else - including Home, history and the pre-gathering
+  // screens - goes to where the active gathering's stage starts.
+  return belongsToStage ? null : _entryPointFor(gathering);
 }
