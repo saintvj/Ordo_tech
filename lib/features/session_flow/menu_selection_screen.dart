@@ -117,7 +117,7 @@ class MenuSelectionScreen extends ConsumerWidget {
                   backgroundColor: theme.colorScheme.surface,
                   foregroundColor: theme.colorScheme.onSurface,
                   side: BorderSide(
-                    color: theme.colorScheme.onSurface.withOpacity(0.1),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
                   ),
                 ),
               ),

@@ -1,9 +1,11 @@
 /// Route paths, named as constants so a typo is a compile error rather than
 /// a silent "route not found" at runtime.
 ///
-/// Each screen that needs typed arguments gets its own `*Args` class, passed
-/// through go_router's `extra`, so no screen ever receives a raw `Map` or a
-/// mutable domain object through navigation.
+/// Each screen that needs arguments gets its own typed `*Args` class, carried
+/// in the route's query string (see each class's `location` and `fromQuery`).
+/// Unlike go_router's `extra`, the query survives rebuilds, and a route
+/// opened without valid arguments is redirected rather than shown broken.
+/// No screen receives a raw `Map` or a mutable domain object.
 abstract final class Routes {
   static const home = '/';
   static const createGathering = '/create-gathering';
@@ -34,7 +36,30 @@ class GatheringDetailsArgs {
     required this.hostName,
   });
 
+  /// The details from [query], or null if any is missing or blank.
+  static GatheringDetailsArgs? fromQuery(Map<String, String> query) {
+    final gathering = query['gathering']?.trim() ?? '';
+    final restaurant = query['restaurant']?.trim() ?? '';
+    final host = query['host']?.trim() ?? '';
+    if (gathering.isEmpty || restaurant.isEmpty || host.isEmpty) return null;
+    return GatheringDetailsArgs(
+      gatheringName: gathering,
+      restaurantName: restaurant,
+      hostName: host,
+    );
+  }
+
   final String gatheringName;
   final String restaurantName;
   final String hostName;
+
+  /// Where to navigate to show Menu Selection with these details.
+  String get location => Uri(
+    path: Routes.menuSelection,
+    queryParameters: {
+      'gathering': gatheringName,
+      'restaurant': restaurantName,
+      'host': hostName,
+    },
+  ).toString();
 }

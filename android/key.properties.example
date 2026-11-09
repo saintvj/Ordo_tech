@@ -1,0 +1,7 @@
+# Copy to android/key.properties (which git ignores) and fill in to sign
+# release builds with your upload key. Never commit the real file or the
+# keystore. See https://docs.flutter.dev/deployment/android#sign-the-app
+storePassword=<keystore password>
+keyPassword=<key password>
+keyAlias=upload
+storeFile=<absolute path to upload-keystore.jks>

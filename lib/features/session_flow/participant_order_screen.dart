@@ -5,6 +5,7 @@ import '../../app/routes.dart';
 import '../../application/gathering_controller.dart';
 import '../../domain/money.dart';
 import '../../domain/models.dart';
+import '../../shared/widgets/discard_changes_dialog.dart';
 
 /// Either a new participant (only a name, nothing stored yet) or an existing
 /// participant whose order is being edited.
@@ -13,10 +14,29 @@ class ParticipantOrderArgs {
     : participantId = null;
   const ParticipantOrderArgs.edit(String this.participantId) : name = null;
 
+  /// The args in [query], or null unless it holds exactly one of a
+  /// non-blank `name` (new participant) or `participant` (edit).
+  static ParticipantOrderArgs? fromQuery(Map<String, String> query) {
+    final name = query['name']?.trim() ?? '';
+    final participantId = query['participant'] ?? '';
+    if (name.isNotEmpty == participantId.isNotEmpty) return null;
+    return name.isNotEmpty
+        ? ParticipantOrderArgs.newParticipant(name)
+        : ParticipantOrderArgs.edit(participantId);
+  }
+
   final String? name;
   final String? participantId;
 
   bool get isEditing => participantId != null;
+
+  /// Where to navigate to show the order screen with these args.
+  String get location => Uri(
+    path: Routes.participantOrder,
+    queryParameters: isEditing
+        ? {'participant': participantId}
+        : {'name': name},
+  ).toString();
 }
 
 class ParticipantOrderScreen extends ConsumerStatefulWidget {
@@ -34,6 +54,14 @@ class _ParticipantOrderScreenState
   /// Menu item id → quantity. Only committed on Confirm / Save.
   final Map<String, int> _quantities = {};
 
+  /// The quantities this screen opened with, to tell whether anything
+  /// changed.
+  Map<String, int> _initial = const {};
+
+  bool get _hasChanges =>
+      _quantities.length != _initial.length ||
+      _quantities.entries.any((e) => _initial[e.key] != e.value);
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +72,29 @@ class _ParticipantOrderScreenState
         _quantities[line.menuItemId] =
             (_quantities[line.menuItemId] ?? 0) + line.quantity;
       }
+    }
+    _initial = Map.unmodifiable(_quantities);
+  }
+
+  /// Back (system or app bar). Asks first if there are unsaved changes.
+  /// Editing returns to Review Orders; a new participant (nothing saved
+  /// yet) returns to Participant Name, e.g. to correct their name.
+  Future<void> _handleBack() async {
+    if (_hasChanges) {
+      final isEditing = widget.args.isEditing;
+      final discard = await confirmDiscardChanges(
+        context,
+        title: isEditing ? 'Discard your changes?' : 'Discard this order?',
+        message: isEditing
+            ? 'The changes to this order will not be saved.'
+            : 'The dishes picked so far will not be saved.',
+      );
+      if (!discard || !mounted) return;
+    }
+    if (widget.args.isEditing) {
+      context.pop();
+    } else {
+      context.go(Routes.participantName);
     }
   }
 
@@ -96,16 +147,17 @@ class _ParticipantOrderScreenState
           (gathering.menu.findItem(itemId)?.pricePaise ?? 0) * count;
     }
 
-    // When ordering for a new participant, this screen is reached via go
-    // (see participant_name_screen.dart), so there is nothing beneath it
-    // to pop back to. When editing from Review Orders it is reached via
-    // push, so popping (discarding the in-progress edit) is allowed.
+    // Back is handled in _handleBack, so it can ask before dropping
+    // unsaved choices.
     return PopScope(
-      canPop: isEditing,
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBack();
+      },
       child: Scaffold(
         appBar: AppBar(
           title: Text("$participantName's Order"),
-          automaticallyImplyLeading: isEditing,
+          leading: BackButton(onPressed: _handleBack),
         ),
         body: SafeArea(
           child: Column(
@@ -142,8 +194,9 @@ class _ParticipantOrderScreenState
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                                 side: BorderSide(
-                                  color: theme.colorScheme.onSurface
-                                      .withOpacity(0.05),
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.05,
+                                  ),
                                 ),
                               ),
                               child: Padding(
@@ -176,12 +229,12 @@ class _ParticipantOrderScreenState
                                       decoration: BoxDecoration(
                                         color: count > 0
                                             ? theme.colorScheme.primary
-                                                  .withOpacity(0.1)
+                                                  .withValues(alpha: 0.1)
                                             : theme.colorScheme.surface,
                                         borderRadius: BorderRadius.circular(24),
                                         border: Border.all(
                                           color: theme.colorScheme.onSurface
-                                              .withOpacity(0.1),
+                                              .withValues(alpha: 0.1),
                                         ),
                                       ),
                                       child: Row(
@@ -253,7 +306,7 @@ class _ParticipantOrderScreenState
                   color: theme.colorScheme.surface,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, -5),
                     ),

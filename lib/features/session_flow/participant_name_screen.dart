@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../app/routes.dart';
 import 'participant_order_screen.dart';
+import 'gathering_menu_button.dart';
 
 class ParticipantNameScreen extends StatefulWidget {
   const ParticipantNameScreen({super.key});
@@ -20,10 +20,7 @@ class _ParticipantNameScreenState extends State<ParticipantNameScreen> {
       // in history, so the back stack does not grow with the number of
       // participants. See pass_phone_screen.dart for the matching half of
       // this cycle.
-      context.go(
-        Routes.participantOrder,
-        extra: ParticipantOrderArgs.newParticipant(name),
-      );
+      context.go(ParticipantOrderArgs.newParticipant(name).location);
     }
   }
 
@@ -47,6 +44,7 @@ class _ParticipantNameScreenState extends State<ParticipantNameScreen> {
         appBar: AppBar(
           title: const Text('Join Gathering'),
           automaticallyImplyLeading: false,
+          actions: const [GatheringMenuButton()],
         ),
         body: SafeArea(
           child: Center(
@@ -65,7 +63,7 @@ class _ParticipantNameScreenState extends State<ParticipantNameScreen> {
                   Text(
                     'Enter your name to browse the menu and place your order.',
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                     textAlign: TextAlign.center,
                   ),

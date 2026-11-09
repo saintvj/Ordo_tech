@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/routes.dart';
+import 'gathering_menu_button.dart';
 
 class PassPhoneScreen extends StatelessWidget {
   const PassPhoneScreen({super.key});
@@ -13,6 +14,12 @@ class PassPhoneScreen extends StatelessWidget {
     return PopScope(
       canPop: false,
       child: Scaffold(
+        // No title: just room for the "More options" menu, in the same
+        // ivory as the page.
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          actions: const [GatheringMenuButton()],
+        ),
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(32.0),
@@ -31,7 +38,7 @@ class PassPhoneScreen extends StatelessWidget {
                 Text(
                   'Please pass the phone to the next person or finish ordering.',
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   textAlign: TextAlign.center,
                 ),

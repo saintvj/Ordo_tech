@@ -362,6 +362,10 @@ class _FailingRepository implements GatheringRepository {
       throw const GatheringStorageException('unreadable');
 
   @override
+  Future<void> delete(String id) async =>
+      throw const GatheringStorageException('disk full');
+
+  @override
   Future<GatheringList> listAll() async =>
       throw const GatheringStorageException('unreadable');
 

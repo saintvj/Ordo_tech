@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/routes.dart';
 import '../../application/gathering_controller.dart';
 import '../../domain/models.dart';
+import 'gathering_menu_button.dart';
 
 /// One portion to hand over: unit [index] of an order line.
 class _ServingUnit {
@@ -47,6 +48,7 @@ class WaiterModeScreen extends ConsumerWidget {
               },
               child: const Text('Finish Service'),
             ),
+            const GatheringMenuButton(),
           ],
         ),
         body: SafeArea(
@@ -66,12 +68,12 @@ class WaiterModeScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isComplete
-                        ? theme.colorScheme.tertiary.withOpacity(0.5)
-                        : theme.colorScheme.onSurface.withOpacity(0.05),
+                        ? theme.colorScheme.tertiary.withValues(alpha: 0.5)
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.05),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
+                      color: Colors.black.withValues(alpha: 0.02),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -99,8 +101,8 @@ class WaiterModeScreen extends ConsumerWidget {
                               style: theme.textTheme.labelLarge?.copyWith(
                                 color: isComplete
                                     ? theme.colorScheme.tertiary
-                                    : theme.colorScheme.onSurface.withOpacity(
-                                        0.7,
+                                    : theme.colorScheme.onSurface.withValues(
+                                        alpha: 0.7,
                                       ),
                               ),
                             ),
@@ -115,7 +117,7 @@ class WaiterModeScreen extends ConsumerWidget {
                                 : servedCount / totalCount,
                             minHeight: 8,
                             backgroundColor: theme.colorScheme.onSurface
-                                .withOpacity(0.05),
+                                .withValues(alpha: 0.05),
                             color: isComplete
                                 ? theme.colorScheme.tertiary
                                 : theme.colorScheme.primary,
@@ -145,33 +147,36 @@ class WaiterModeScreen extends ConsumerWidget {
                                 ),
                                 decoration: BoxDecoration(
                                   color: order.isServed
-                                      ? theme.colorScheme.tertiary.withOpacity(
-                                          0.1,
+                                      ? theme.colorScheme.tertiary.withValues(
+                                          alpha: 0.1,
                                         )
-                                      : theme.colorScheme.background,
+                                      : theme.scaffoldBackgroundColor,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      gathering
-                                              .findParticipant(
-                                                order.line.participantId,
-                                              )
-                                              ?.name ??
-                                          '',
-                                      style: theme.textTheme.bodyMedium
-                                          ?.copyWith(
-                                            decoration: order.isServed
-                                                ? TextDecoration.lineThrough
-                                                : null,
-                                            color: order.isServed
-                                                ? theme.colorScheme.tertiary
-                                                : theme.colorScheme.onSurface,
-                                          ),
+                                    Expanded(
+                                      child: Text(
+                                        gathering
+                                                .findParticipant(
+                                                  order.line.participantId,
+                                                )
+                                                ?.name ??
+                                            '',
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              decoration: order.isServed
+                                                  ? TextDecoration.lineThrough
+                                                  : null,
+                                              color: order.isServed
+                                                  ? theme.colorScheme.tertiary
+                                                  : theme.colorScheme.onSurface,
+                                            ),
+                                      ),
                                     ),
+                                    const SizedBox(width: 12),
                                     Icon(
                                       order.isServed
                                           ? Icons.check_circle
@@ -179,7 +184,7 @@ class WaiterModeScreen extends ConsumerWidget {
                                       color: order.isServed
                                           ? theme.colorScheme.tertiary
                                           : theme.colorScheme.onSurface
-                                                .withOpacity(0.2),
+                                                .withValues(alpha: 0.2),
                                     ),
                                   ],
                                 ),

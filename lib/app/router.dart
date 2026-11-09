@@ -93,15 +93,15 @@ GoRouter buildRouter(Ref ref) {
       ),
       GoRoute(
         path: Routes.menuSelection,
-        builder: (context, state) {
-          // See the matching comment on Routes.participantOrder: extra
-          // can be null on a rebuild of a route that is being navigated
-          // away from.
-          final details = state.extra;
-          return details is GatheringDetailsArgs
-              ? MenuSelectionScreen(details: details)
-              : const Scaffold();
-        },
+        // Without the gathering details there is nothing to start; ask for
+        // them again.
+        redirect: (context, state) =>
+            GatheringDetailsArgs.fromQuery(state.uri.queryParameters) == null
+            ? Routes.createGathering
+            : null,
+        builder: (context, state) => MenuSelectionScreen(
+          details: GatheringDetailsArgs.fromQuery(state.uri.queryParameters)!,
+        ),
       ),
       GoRoute(
         path: Routes.editMenu,
@@ -113,17 +113,11 @@ GoRouter buildRouter(Ref ref) {
       ),
       GoRoute(
         path: Routes.participantOrder,
-        builder: (context, state) {
-          // `extra` is only guaranteed on the push/go that first opened
-          // this route; a rebuild while it's being popped (e.g. triggered
-          // by the refresh listener) can hand back a null extra. Fall
-          // back to an empty screen rather than crash on the cast - this
-          // page is on its way out regardless.
-          final args = state.extra;
-          return args is ParticipantOrderArgs
-              ? ParticipantOrderScreen(args: args)
-              : const Scaffold();
-        },
+        redirect: (context, state) =>
+            _participantOrderRedirect(ref, state.uri.queryParameters),
+        builder: (context, state) => ParticipantOrderScreen(
+          args: ParticipantOrderArgs.fromQuery(state.uri.queryParameters)!,
+        ),
       ),
       GoRoute(
         path: Routes.passPhone,
@@ -196,4 +190,18 @@ String? _redirectForLifecycle(Ref ref, String location) {
   // Everything else - including Home, history and the pre-gathering
   // screens - goes to where the active gathering's stage starts.
   return belongsToStage ? null : _entryPointFor(gathering);
+}
+
+/// The order screen needs either a new participant's name or an existing
+/// participant of the active gathering. Otherwise, send the user to where
+/// they can carry on: entering a name, or the orders they were reviewing.
+String? _participantOrderRedirect(Ref ref, Map<String, String> query) {
+  final args = ParticipantOrderArgs.fromQuery(query);
+  if (args == null) return Routes.participantName;
+  final participantId = args.participantId;
+  if (participantId != null &&
+      ref.read(gatheringProvider)?.findParticipant(participantId) == null) {
+    return Routes.reviewOrders;
+  }
+  return null;
 }
