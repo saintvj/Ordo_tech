@@ -12,7 +12,8 @@ We use a feature-based folder structure designed around the linear session flow:
 - **`application/`**: `GatheringController`, a Riverpod `Notifier` that owns the active gathering and enforces its lifecycle.
 - **`data/`**: `GatheringRepository` (the storage interface) and `data/local/`, its Drift implementation. Only `data/local/` touches database tables.
 - **`features/history/`**: Session history, the read-only past-gathering view and the resume picker.
-- **`shared/`**: Shared widgets and extensions.
+- **`shared/`**: Shared widgets (`MessageView` for empty and error states, `confirmDiscardChanges`) and extensions.
+- **`assets/fonts/`**: Playfair Display and Inter, bundled so the app never downloads fonts (`GoogleFonts.config.allowRuntimeFetching = false`). SIL Open Font License texts sit beside them and are registered on the app's licenses page.
 
 ## Modular Plugin Architecture
 The application is designed so that future features (modules) can be plugged in without disrupting the core offline flow. 
@@ -53,13 +54,14 @@ The Waiter Mode groups data strictly by **MenuItem** rather than by participant.
 ## Persistence
 - **Repository**: the controller saves through `gatheringRepositoryProvider` (`GatheringRepository`). `main.dart` provides `LocalGatheringRepository`; tests default to `InMemoryGatheringRepository`. A future Firestore repository implements the same interface.
 - **Saving**: every controller change calls `_update`, which sets state and queues a save. Saves run one at a time in order. A failed save is shown to the user; the in-memory state is kept.
+- **Completing and discarding**: `completeGathering()` and `discardGathering()` run after any queued saves (so none can re-create or overwrite the result), clear the active gathering only once they succeed, and on failure keep it and offer "Try Again". Discard deletes one unfinished gathering; its child rows go with it by cascade. Completed gatherings cannot be deleted.
 - **Snapshots**: a save replaces all of a gathering's rows in one transaction, so storage always holds one complete state. Completed gatherings refuse further saves.
 - **Tables**: `gatherings`; `menu_categories` and `menu_items` keyed by `(gathering_id, id)` so every gathering has its own menu; `participants`; `order_lines` (with the name/price snapshot, no foreign key to the menu). Child tables cascade from `gatherings`. Money is integer paise, enforced by CHECK constraints.
 - **Start-up**: `loadStartupState` reads (never writes). One unfinished gathering is reopened and the router shows its stage; several open the resume picker; none or a read error start at Home.
 - **Schema changes**: bump `schemaVersion`, run `dart run drift_dev make-migrations` (exports `drift_schemas/` and generates step and test scaffolding), add the step in `onUpgrade`. Steps must not drop user data. An unknown version (e.g. a downgrade) refuses to open rather than guessing.
 
 ## Navigation
-Routing uses go_router (`lib/app/router.dart`, paths in `lib/app/routes.dart`). Screens read state from `gatheringProvider`; routes carry only small typed `*Args` objects in `extra`, never a gathering.
+Routing uses go_router (`lib/app/router.dart`, paths in `lib/app/routes.dart`). Screens read state from `gatheringProvider`. Screens that need arguments take a small typed `*Args` object carried in the route's query string (`args.location` / `*Args.fromQuery`), never a gathering. Unlike `extra`, the query survives rebuilds; a route opened without valid arguments redirects (Menu Selection → Create Gathering, Participant Order → Participant Name or Review Orders).
 - **Lifecycle redirect**: every navigation runs `_redirectForLifecycle`. With no gathering, only Home, Create Gathering and Menu Selection are reachable. Otherwise only the current stage's routes are reachable (menuDraft: Edit Menu; ordering: Participant Name, Participant Order, Pass Phone, Review Orders; serving: Waiter Mode, Session Summary, Bill Summary), and anything else redirects to that stage's entry point.
 - **Refresh**: the router re-runs the redirect when the gathering's status changes, so `confirmMenu()`, `startServing()` and `closeGathering()` move the user on their own. Other edits don't refresh the router.
 - **Back stack**: stage changes and the pass-and-play cycle use `go`, which replaces history, so the stack doesn't grow with participants. Edits from Review Orders, Review Orders from Pass Phone, and the screens after Waiter Mode use `push`, so back returns to the previous screen.
@@ -67,5 +69,10 @@ Routing uses go_router (`lib/app/router.dart`, paths in `lib/app/routes.dart`). 
 ## State Management & Boundaries
 - **State**: The active gathering lives in `gatheringProvider`. Screens `ref.watch` it and call the controller; routes carry no session objects.
 - **Menu Locking**: `confirmMenu()` moves the gathering to `ordering`. Menu edits are rejected from then on, and the first participant's screen blocks back navigation to the editor.
-- **Order Editing**: `ParticipantOrderScreen` keeps quantities locally and commits them on "Confirm Order" / "Save Changes" via `addParticipantWithOrder` or `replaceOrder`. Backing out commits nothing. Saving an empty order removes the participant.
+- **Order Editing**: `ParticipantOrderScreen` keeps quantities locally and commits them on "Confirm Order" / "Save Changes" via `addParticipantWithOrder` or `replaceOrder`. Backing out commits nothing; if anything changed it asks first. A new participant backs out to Participant Name. Saving an empty order removes the participant.
+- **Unsaved work**: back never drops unsaved input silently. Participant Order and Create Gathering ask before discarding.
 - **Waiter Mode Boundary**: `startServing()` moves the gathering to `serving` and clears the ordering screens from the back stack. Order changes are rejected from then on.
+
+## Android release
+- Package id `com.ordotech.ordo`, label "Ordo". No network permission in release: nothing uses the network (fonts are bundled).
+- Release builds sign with the upload key from `android/key.properties` (git-ignored; copy `android/key.properties.example`). Without it they are debug-signed, for testing only.

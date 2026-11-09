@@ -198,6 +198,52 @@ class GatheringController extends Notifier<Gathering?> {
     return true;
   }
 
+  /// The discard that is still running, if any. See [discardGathering].
+  Future<bool>? _pendingDiscard;
+
+  /// Permanently deletes the active, unfinished gathering. Once that has
+  /// succeeded it is no longer active (the router then shows Home).
+  ///
+  /// Returns false if the delete failed: the gathering stays active and
+  /// saved, the user is told, and calling this again retries. A second call
+  /// while one is running joins it.
+  Future<bool> discardGathering() {
+    final pending = _pendingDiscard;
+    if (pending != null) return pending;
+    final discard = _discard();
+    _pendingDiscard = discard;
+    return discard.whenComplete(() => _pendingDiscard = null);
+  }
+
+  Future<bool> _discard() async {
+    final gathering = _current;
+    if (gathering.status.isFinished) {
+      throw StateError('Completed gatherings are read-only');
+    }
+    final repository = ref.read(gatheringRepositoryProvider);
+
+    // After every queued save, so none of them can re-create the gathering
+    // after it has been deleted.
+    final delete = _saveQueue.then((_) => repository.delete(gathering.id));
+    _saveQueue = delete.then((_) {}, onError: (Object _) {});
+    try {
+      await delete;
+    } catch (_) {
+      if (ref.mounted) {
+        ref
+            .read(storageIssueProvider.notifier)
+            .report(
+              "Ordo couldn't discard this gathering. It's still saved.",
+              actionLabel: 'Try Again',
+              onAction: discardGathering,
+            );
+      }
+      return false;
+    }
+    if (ref.mounted && state?.id == gathering.id) state = null;
+    return true;
+  }
+
   // Menu editing (menuDraft only).
 
   void _updateMenu(List<MenuCategory> Function(List<MenuCategory>) update) {

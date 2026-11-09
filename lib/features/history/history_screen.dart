@@ -7,6 +7,7 @@ import '../../application/startup.dart';
 import '../../data/gathering_repository.dart';
 import '../../domain/models.dart';
 import 'gathering_tile.dart';
+import '../../shared/widgets/message_view.dart';
 
 /// Every saved gathering, newest first.
 final gatheringHistoryProvider = FutureProvider.autoDispose<GatheringList>(
@@ -51,16 +52,16 @@ class HistoryScreen extends ConsumerWidget {
       body: SafeArea(
         child: history.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stackTrace) => _Message(
-            text: "Past gatherings couldn't be loaded.",
-            action: TextButton(
-              onPressed: () => ref.invalidate(gatheringHistoryProvider),
-              child: const Text('Try Again'),
-            ),
+          error: (error, stackTrace) => MessageView(
+            message: "Past gatherings couldn't be loaded.",
+            actionLabel: 'Try Again',
+            onAction: () => ref.invalidate(gatheringHistoryProvider),
           ),
           data: (listing) =>
               listing.gatherings.isEmpty && !listing.hasUnreadable
-              ? const _Message(text: 'Gatherings you start will appear here.')
+              ? const MessageView(
+                  message: 'Gatherings you start will appear here.',
+                )
               : ListView(
                   padding: const EdgeInsets.all(24.0),
                   children: [
@@ -90,33 +91,6 @@ class HistoryScreen extends ConsumerWidget {
                       ),
                   ],
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Message extends StatelessWidget {
-  const _Message({required this.text, this.action});
-
-  final String text;
-  final Widget? action;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            if (action != null) ...[const SizedBox(height: 16), action!],
-          ],
         ),
       ),
     );

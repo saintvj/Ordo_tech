@@ -7,6 +7,7 @@ import '../../application/startup.dart';
 import '../../data/gathering_repository.dart';
 import 'gathering_tile.dart';
 import 'history_screen.dart';
+import '../../shared/widgets/message_view.dart';
 
 final _unfinishedProvider = FutureProvider.autoDispose<GatheringList>(
   (ref) => ref.watch(gatheringRepositoryProvider).listUnfinished(),
@@ -34,11 +35,10 @@ class ResumeScreen extends ConsumerWidget {
             Expanded(
               child: unfinished.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stackTrace) => Center(
-                  child: Text(
-                    "Unfinished gatherings couldn't be loaded.",
-                    style: theme.textTheme.bodyLarge,
-                  ),
+                error: (error, stackTrace) => MessageView(
+                  message: "Unfinished gatherings couldn't be loaded.",
+                  actionLabel: 'Try Again',
+                  onAction: () => ref.invalidate(_unfinishedProvider),
                 ),
                 data: (listing) => ListView(
                   padding: const EdgeInsets.all(24.0),

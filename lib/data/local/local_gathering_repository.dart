@@ -193,6 +193,28 @@ class LocalGatheringRepository implements GatheringRepository {
   }
 
   @override
+  Future<void> delete(String id) async {
+    try {
+      await _db.transaction(() async {
+        final stored = await (_db.select(
+          _db.gatherings,
+        )..where((t) => t.id.equals(id))).getSingleOrNull();
+        if (stored == null) return;
+        if (_statusOf(stored).isFinished) {
+          throw ReadOnlyGatheringException(id);
+        }
+        // The foreign keys cascade to the menu, participants and order
+        // lines of this gathering only.
+        await (_db.delete(_db.gatherings)..where((t) => t.id.equals(id))).go();
+      });
+    } on ReadOnlyGatheringException {
+      rethrow;
+    } catch (e) {
+      throw GatheringStorageException('Could not delete gathering $id', e);
+    }
+  }
+
+  @override
   Future<GatheringList> listAll() => _list(unfinishedOnly: false);
 
   @override

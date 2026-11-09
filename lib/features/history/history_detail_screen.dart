@@ -5,6 +5,7 @@ import '../../domain/bill.dart';
 import '../../domain/models.dart';
 import '../../domain/money.dart';
 import 'gathering_tile.dart';
+import '../../shared/widgets/message_view.dart';
 
 final _savedGatheringProvider = FutureProvider.autoDispose
     .family<Gathering?, String>(
@@ -20,7 +21,6 @@ class HistoryDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final saved = ref.watch(_savedGatheringProvider(gatheringId));
 
     return Scaffold(
@@ -28,18 +28,15 @@ class HistoryDetailScreen extends ConsumerWidget {
       body: SafeArea(
         child: saved.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stackTrace) => Center(
-            child: Text(
-              "This gathering couldn't be loaded.",
-              style: theme.textTheme.bodyLarge,
-            ),
+          error: (error, stackTrace) => MessageView(
+            message: "This gathering couldn't be loaded.",
+            actionLabel: 'Try Again',
+            onAction: () =>
+                ref.invalidate(_savedGatheringProvider(gatheringId)),
           ),
           data: (gathering) => gathering == null
-              ? Center(
-                  child: Text(
-                    'This gathering is no longer saved.',
-                    style: theme.textTheme.bodyLarge,
-                  ),
+              ? const MessageView(
+                  message: 'This gathering is no longer saved on this phone.',
                 )
               : _Bill(gathering: gathering),
         ),

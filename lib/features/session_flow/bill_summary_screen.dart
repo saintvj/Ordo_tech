@@ -43,97 +43,88 @@ class BillSummaryScreen extends ConsumerWidget {
             children: [
               Expanded(
                 child: Card(
-                  child: Padding(
+                  // One scrolling list, so on a short screen or with large
+                  // text the totals scroll into view instead of being cut
+                  // off.
+                  child: ListView(
                     padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          gathering.restaurantName,
-                          style: theme.textTheme.headlineMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          gathering.name,
-                          style: theme.textTheme.bodyMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 32),
-                        const Divider(),
-                        const SizedBox(height: 16),
-
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: rows.length,
-                            itemBuilder: (context, index) {
-                              final row = rows[index];
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        gathering.restaurantName,
+                        style: theme.textTheme.headlineMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        gathering.name,
+                        style: theme.textTheme.bodyMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 32),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      for (final row in rows)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            row.name,
-                                            style: theme.textTheme.titleSmall,
-                                          ),
-                                          Text(
-                                            row.participant,
-                                            style: theme.textTheme.bodySmall,
-                                          ),
-                                        ],
-                                      ),
+                                    Text(
+                                      row.name,
+                                      style: theme.textTheme.titleSmall,
                                     ),
                                     Text(
-                                      formatRupees(row.pricePaise),
-                                      style: theme.textTheme.titleSmall,
+                                      row.participant,
+                                      style: theme.textTheme.bodySmall,
                                     ),
                                   ],
                                 ),
-                              );
-                            },
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                formatRupees(row.pricePaise),
+                                style: theme.textTheme.titleSmall,
+                              ),
+                            ],
                           ),
                         ),
-
-                        const SizedBox(height: 16),
-                        const Divider(),
-                        const SizedBox(height: 16),
-
-                        _buildTotalRow(context, 'Subtotal', subtotal),
-                        const SizedBox(height: 8),
-                        _buildTotalRow(context, 'CGST (2.5%)', cgst),
-                        const SizedBox(height: 8),
-                        _buildTotalRow(context, 'SGST (2.5%)', sgst),
-                        const SizedBox(height: 16),
-                        const Divider(),
-                        const SizedBox(height: 16),
-
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      _buildTotalRow(context, 'Subtotal', subtotal),
+                      const SizedBox(height: 8),
+                      _buildTotalRow(context, 'CGST (2.5%)', cgst),
+                      const SizedBox(height: 8),
+                      _buildTotalRow(context, 'SGST (2.5%)', sgst),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
                               'Grand Total',
                               style: theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            Text(
-                              formatRupees(grandTotal),
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.primary,
-                              ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            formatRupees(grandTotal),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -163,9 +154,9 @@ class BillSummaryScreen extends ConsumerWidget {
   Widget _buildTotalRow(BuildContext context, String label, int amountPaise) {
     final theme = Theme.of(context);
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: theme.textTheme.bodyMedium),
+        Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+        const SizedBox(width: 12),
         Text(formatRupees(amountPaise), style: theme.textTheme.bodyMedium),
       ],
     );

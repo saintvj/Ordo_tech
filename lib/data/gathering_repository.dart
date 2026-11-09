@@ -19,6 +19,14 @@ abstract interface class GatheringRepository {
   /// Throws [GatheringStorageException] if the stored data can't be read.
   Future<Gathering?> load(String id);
 
+  /// Permanently deletes the unfinished gathering [id] and all its menu,
+  /// participant and order data. Deleting a gathering that is not stored
+  /// does nothing.
+  ///
+  /// Throws [ReadOnlyGatheringException] for a completed gathering, which
+  /// stays in history, and [GatheringStorageException] if the delete fails.
+  Future<void> delete(String id);
+
   /// Every stored gathering, newest first.
   ///
   /// A gathering that can't be read is left out of
@@ -88,6 +96,14 @@ class InMemoryGatheringRepository implements GatheringRepository {
 
   @override
   Future<Gathering?> load(String id) async => _gatherings[id];
+
+  @override
+  Future<void> delete(String id) async {
+    final stored = _gatherings[id];
+    if (stored == null) return;
+    if (stored.status.isFinished) throw ReadOnlyGatheringException(id);
+    _gatherings.remove(id);
+  }
 
   @override
   Future<GatheringList> listAll() async =>

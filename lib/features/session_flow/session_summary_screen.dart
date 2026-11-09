@@ -55,10 +55,13 @@ class SessionSummaryScreen extends ConsumerWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  item.name,
-                                  style: theme.textTheme.bodyMedium,
+                                Expanded(
+                                  child: Text(
+                                    item.name,
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
                                 ),
+                                const SizedBox(width: 12),
                                 Icon(
                                   item.isServed
                                       ? Icons.check_circle
@@ -86,7 +89,7 @@ class SessionSummaryScreen extends ConsumerWidget {
                 color: theme.colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -5),
                   ),

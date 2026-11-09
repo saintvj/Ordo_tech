@@ -5,6 +5,8 @@ import '../../app/routes.dart';
 import '../../application/gathering_controller.dart';
 import '../../domain/models.dart';
 import '../../domain/money.dart';
+import 'gathering_menu_button.dart';
+import '../../shared/widgets/message_view.dart';
 
 class EditMenuScreen extends ConsumerWidget {
   const EditMenuScreen({super.key});
@@ -152,126 +154,167 @@ class EditMenuScreen extends ConsumerWidget {
             tooltip: 'Add Category',
             onPressed: () => _showCategoryDialog(context, ref, null),
           ),
+          const GatheringMenuButton(),
         ],
       ),
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: menu.categories.length,
-                itemBuilder: (context, index) {
-                  final category = menu.categories[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0,
-                            vertical: 8.0,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(12),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: menu.categories.isEmpty
+                  ? MessageView(
+                      title: 'Start your menu',
+                      message:
+                          'Add a category, such as Starters or Mains, then '
+                          'add the dishes in it.',
+                      actionLabel: 'Add Category',
+                      onAction: () => _showCategoryDialog(context, ref, null),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: menu.categories.length,
+                      itemBuilder: (context, index) {
+                        final category = menu.categories[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  category.name,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16.0,
+                                  vertical: 8.0,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(12),
                                   ),
                                 ),
-                              ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, size: 20),
-                                    onPressed: () => _showCategoryDialog(
-                                      context,
-                                      ref,
-                                      category,
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        category.name,
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
                                     ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, size: 20),
-                                    onPressed: () =>
-                                        notifier.deleteCategory(category.id),
-                                  ),
-                                ],
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            size: 20,
+                                          ),
+                                          onPressed: () => _showCategoryDialog(
+                                            context,
+                                            ref,
+                                            category,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            size: 20,
+                                          ),
+                                          onPressed: () => notifier
+                                              .deleteCategory(category.id),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
-                          ),
-                        ),
-                        if (category.items.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Text('No items in this category.'),
-                          ),
-                        ...category.items.map((item) {
-                          return ListTile(
-                            title: Text(item.name),
-                            subtitle: Text(formatRupees(item.pricePaise)),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit, size: 20),
+                              if (category.items.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Text('No items in this category.'),
+                                ),
+                              ...category.items.map((item) {
+                                return ListTile(
+                                  title: Text(item.name),
+                                  subtitle: Text(formatRupees(item.pricePaise)),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit, size: 20),
+                                        onPressed: () => _showItemDialog(
+                                          context,
+                                          ref,
+                                          category,
+                                          item,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          size: 20,
+                                        ),
+                                        onPressed: () => notifier.deleteItem(
+                                          category.id,
+                                          item.id,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: TextButton.icon(
                                   onPressed: () => _showItemDialog(
                                     context,
                                     ref,
                                     category,
-                                    item,
+                                    null,
                                   ),
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('Add Item'),
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete, size: 20),
-                                  onPressed: () =>
-                                      notifier.deleteItem(category.id, item.id),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: TextButton.icon(
-                            onPressed: () =>
-                                _showItemDialog(context, ref, category, null),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add Item'),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
             Padding(
               padding: const EdgeInsets.all(24.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: menu.hasItems
-                      ? () {
-                          notifier.confirmMenu();
-                          // Confirming the menu moves the gathering into
-                          // ordering, so the editor itself becomes
-                          // unreachable; go rather than push.
-                          context.go(Routes.participantName);
-                        }
-                      : null,
-                  child: const Text('Confirm Menu'),
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!menu.hasItems && menu.categories.isNotEmpty) ...[
+                    Text(
+                      'Add at least one dish to continue.',
+                      style: theme.textTheme.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: menu.hasItems
+                          ? () {
+                              notifier.confirmMenu();
+                              // Confirming the menu moves the gathering into
+                              // ordering, so the editor itself becomes
+                              // unreachable; go rather than push.
+                              context.go(Routes.participantName);
+                            }
+                          : null,
+                      child: const Text('Confirm Menu'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
