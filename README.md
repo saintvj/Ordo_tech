@@ -1,29 +1,52 @@
 # Ordo
 
-**Offline-First Dining Session Organizer**
+**Offline-first, pass-and-play dining companion for Android.**
 
-## Project Overview
-Ordo is an offline-first pass-and-play dining companion that lets one person collect everyone's orders on a single phone and helps the waiter serve food accurately.
+One phone goes around the table: the host sets up a gathering, each person adds
+their order, a waiter mode tracks what's served, and Ordo produces an itemised,
+splittable bill you can settle and share — all with no account and no network.
 
-## Vision
-To create a seamless, completely offline pass-and-play experience for group dining. The app operates without accounts, without the internet, and without a backend—ensuring total privacy and immediate usability. All data is stored locally within a unified `Session` model for the current dining session.
+## Current functionality
 
-## How to Run
-1. Ensure you have [Flutter](https://flutter.dev/) installed.
-2. Clone this repository.
-3. Run `flutter pub get` to install dependencies.
-4. Run `flutter run` to launch the app on your connected Android device or emulator.
+- Create a gathering and build a menu by hand, or **scan a menu photo** (a
+  Gemini-powered proof of concept via a local proxy).
+- Collect per-participant orders and track serving progress.
+- **Configurable bill:** CGST/SGST, service charge, flat discount, and
+  tax-inclusive or tax-exclusive pricing.
+- **Two split modes:** *pay as you eat* (proportional shared charges) and
+  *split equally* (every participant by default, with explicit exclusion).
+- All money in integer paise; participant totals always sum exactly to the bill.
+- **Paid/pending settlement** per participant, preserved across restarts.
+- **Export** the bill as plain text or PDF through the **native Android share
+  sheet**.
+- Fully offline, no sign-in; session history stored locally.
 
-## Folder Structure
-Our project follows a modular feature architecture. Currently, it focuses entirely on the `session_flow`:
-- `lib/app`: App root, initialization, and routing.
-- `lib/core`: Core configurations, constants, services, and theme.
-- `lib/features/session_flow`: The pass-and-play wizard flow (home -> menu editor -> participant name -> order -> pass phone -> review orders & edit -> waiter mode -> summary).
-- `lib/shared/models`: Unified domain models like `Session`, `Participant`, `Menu`, `MenuCategory`, `MenuItem`, and `OrderItem`.
-- `lib/shared/widgets`: Shared UI components.
+## Tech stack
 
-## Development Workflow
-- Follow the predefined folder structure.
-- Use Material 3 for all UI components.
-- Do not add unnecessary dependencies or state management packages for the MVP. Pass state through arguments or local providers.
-- Maintain the modular plugin architecture described in `ARCHITECTURE.md`.
+Flutter · Riverpod · go_router · Drift/SQLite · Node.js/Express proxy · Gemini
+API (scanner only) · `pdf` + `printing` + `share_plus` for export.
+
+## Quick setup
+
+```bash
+git clone https://github.com/saintvj/Ordo_tech.git
+cd Ordo_tech
+flutter pub get
+flutter run            # with an Android device or emulator connected
+```
+
+The menu scanner additionally needs the local proxy running
+(`tools/menu-scanner-proxy`) and an adb reverse tunnel — see the handover guide.
+
+## Tests
+
+```bash
+flutter analyze
+flutter test
+cd tools/menu-scanner-proxy && npm test
+```
+
+## Documentation
+
+Full setup, architecture, billing/database details, limitations, roadmap and
+AI-agent guidelines are in **[docs/PROJECT_HANDOVER.md](docs/PROJECT_HANDOVER.md)**.
