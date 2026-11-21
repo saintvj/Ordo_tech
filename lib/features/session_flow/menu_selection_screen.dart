@@ -32,17 +32,7 @@ class MenuSelectionScreen extends ConsumerWidget {
               Card(
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text(
-                          "Coming Soon: AI-powered menu scanning will automatically build today's menu.",
-                        ),
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor: theme.colorScheme.secondary,
-                      ),
-                    );
-                  },
+                  onTap: () => context.push(details.scannerLocation),
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Column(
@@ -64,15 +54,7 @@ class MenuSelectionScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Coming Soon',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: theme.colorScheme.secondary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "AI-powered menu scanning will automatically build today's menu.",
+                          'Photograph your menu and let Ordo extract the dishes automatically.',
                           style: theme.textTheme.bodyMedium,
                         ),
                       ],

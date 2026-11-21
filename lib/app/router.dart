@@ -7,6 +7,7 @@ import '../domain/models.dart';
 import '../features/history/history_detail_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/history/resume_screen.dart';
+import '../features/menu_scanner/menu_scanner_screen.dart';
 import '../features/session_flow/bill_summary_screen.dart';
 import '../features/session_flow/create_gathering_screen.dart';
 import '../features/session_flow/edit_menu_screen.dart';
@@ -152,6 +153,12 @@ GoRouter buildRouter(Ref ref) {
         path: Routes.resume,
         builder: (context, state) => const ResumeScreen(),
       ),
+      GoRoute(
+        path: Routes.menuScanner,
+        builder: (context, state) => MenuScannerScreen(
+          details: GatheringDetailsArgs.fromQuery(state.uri.queryParameters),
+        ),
+      ),
     ],
   );
 }
@@ -175,6 +182,7 @@ String? _redirectForLifecycle(Ref ref, String location) {
       Routes.menuSelection,
       Routes.history,
       Routes.resume,
+      Routes.menuScanner,
     };
     final isHistoryDetail = location.startsWith('${Routes.history}/');
     return allowed.contains(location) || isHistoryDetail ? null : Routes.home;

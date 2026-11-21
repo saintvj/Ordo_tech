@@ -1,0 +1,19 @@
+{
+  "name": "menu-scanner-proxy",
+  "version": "1.0.0",
+  "description": "Development proxy for Gemini Menu Scanner in Ordo",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@google/genai": "^3.2.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
+  }
+}

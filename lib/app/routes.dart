@@ -21,6 +21,7 @@ abstract final class Routes {
   static const history = '/history';
   static const historyDetail = '/history/:id';
   static const resume = '/resume';
+  static const menuScanner = '/menu-scanner';
 
   /// The read-only history page for one gathering.
   static String historyDetailFor(String gatheringId) =>
@@ -56,6 +57,16 @@ class GatheringDetailsArgs {
   /// Where to navigate to show Menu Selection with these details.
   String get location => Uri(
     path: Routes.menuSelection,
+    queryParameters: {
+      'gathering': gatheringName,
+      'restaurant': restaurantName,
+      'host': hostName,
+    },
+  ).toString();
+
+  /// Where to navigate to show Menu Scanner with these details.
+  String get scannerLocation => Uri(
+    path: Routes.menuScanner,
     queryParameters: {
       'gathering': gatheringName,
       'restaurant': restaurantName,
