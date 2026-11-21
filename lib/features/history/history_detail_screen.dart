@@ -38,7 +38,15 @@ class HistoryDetailScreen extends ConsumerWidget {
               ? const MessageView(
                   message: 'This gathering is no longer saved on this phone.',
                 )
-              : _Bill(gathering: gathering),
+              : _Bill(
+                  gathering: gathering,
+                  onTogglePaid: (participantId, paid) async {
+                    await ref
+                        .read(gatheringRepositoryProvider)
+                        .updateSettlement(gathering.id, participantId, paid);
+                    ref.invalidate(_savedGatheringProvider(gatheringId));
+                  },
+                ),
         ),
       ),
     );
@@ -46,14 +54,16 @@ class HistoryDetailScreen extends ConsumerWidget {
 }
 
 class _Bill extends StatelessWidget {
-  const _Bill({required this.gathering});
+  const _Bill({required this.gathering, required this.onTogglePaid});
 
   final Gathering gathering;
+  final Future<void> Function(String participantId, bool paid) onTogglePaid;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final totals = BillTotals.of(gathering);
+    final config = gathering.billConfig;
+    final totals = GatheringBill.of(gathering, config);
 
     return ListView(
       padding: const EdgeInsets.all(24.0),
@@ -114,16 +124,24 @@ class _Bill extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 _Row(
-                  label: 'CGST (2.5%)',
+                  label: 'CGST (${_pct(config.cgstBasisPoints)})',
                   paise: totals.cgstPaise,
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 8),
                 _Row(
-                  label: 'SGST (2.5%)',
+                  label: 'SGST (${_pct(config.sgstBasisPoints)})',
                   paise: totals.sgstPaise,
                   style: theme.textTheme.bodyMedium,
                 ),
+                if (totals.serviceChargePaise > 0) ...[
+                  const SizedBox(height: 8),
+                  _Row(
+                    label: 'Service (${_pct(config.serviceChargeBasisPoints)})',
+                    paise: totals.serviceChargePaise,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
                 const SizedBox(height: 16),
                 const Divider(),
                 const SizedBox(height: 16),
@@ -134,10 +152,62 @@ class _Bill extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 24),
+                _Settlement(
+                  participants: gathering.participants,
+                  paidIds: gathering.paidParticipantIds,
+                  onToggle: onTogglePaid,
+                ),
               ],
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  static String _pct(int basisPoints) {
+    final value = basisPoints / 100;
+    return value == value.roundToDouble() ? '${value.round()}%' : '$value%';
+  }
+}
+
+/// Paid / pending tracker for a completed gathering. Toggling a participant
+/// updates only the settlement record, through the narrow repository method.
+class _Settlement extends StatelessWidget {
+  const _Settlement({
+    required this.participants,
+    required this.paidIds,
+    required this.onToggle,
+  });
+
+  final List<Participant> participants;
+  final Set<String> paidIds;
+  final Future<void> Function(String participantId, bool paid) onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    if (participants.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Settlement',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        for (final p in participants)
+          CheckboxListTile(
+            key: Key('paid-${p.id}'),
+            contentPadding: EdgeInsets.zero,
+            value: paidIds.contains(p.id),
+            title: Text(p.name),
+            subtitle: Text(paidIds.contains(p.id) ? 'Paid' : 'Pending'),
+            onChanged: (v) => onToggle(p.id, v ?? false),
+          ),
       ],
     );
   }

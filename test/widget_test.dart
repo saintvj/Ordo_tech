@@ -59,7 +59,16 @@ void main() {
 
     await tap(find.text('Finish Service'));
     await tap(find.text('View Bill'));
-    expect(find.text('₹105.00'), findsOneWidget); // 100 + 2.5% + 2.5%
+    // 100 + 2.5% + 2.5%; shown as Ravi's share and again as the grand total.
+    expect(find.text('₹105.00'), findsNWidgets(2));
+
+    // Split toggle and the charges sheet are both reachable on the bill.
+    expect(find.text('Pay as you eat'), findsOneWidget);
+    await tap(find.text('Split equally'));
+    expect(find.text('Equal share of the bill'), findsOneWidget);
+    await tap(find.text('Charges'));
+    expect(find.text('Charges & Discount'), findsOneWidget);
+    await tap(find.text('Apply'));
 
     await tap(find.text('Close Session'));
     expect(find.text('Start a Session'), findsOneWidget);

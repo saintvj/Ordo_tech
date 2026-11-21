@@ -37,6 +37,19 @@ abstract interface class GatheringRepository {
   /// Gatherings that are not completed, newest first. Unreadable ones are
   /// reported as in [listAll].
   Future<GatheringList> listUnfinished();
+
+  /// Marks a single participant paid or pending on a stored gathering,
+  /// without touching its menu, orders or any other field.
+  ///
+  /// This is the only write allowed on a completed gathering, so settlement
+  /// can be tracked after a gathering is finished while its order and menu
+  /// data stay read-only. Throws [ArgumentError] for an unknown gathering
+  /// and [GatheringStorageException] if the write fails.
+  Future<void> updateSettlement(
+    String gatheringId,
+    String participantId,
+    bool paid,
+  );
 }
 
 /// The result of listing gatherings.
@@ -113,6 +126,25 @@ class InMemoryGatheringRepository implements GatheringRepository {
   Future<GatheringList> listUnfinished() async => GatheringList(
     _summaries(_gatherings.values.where((g) => !g.status.isFinished)),
   );
+
+  @override
+  Future<void> updateSettlement(
+    String gatheringId,
+    String participantId,
+    bool paid,
+  ) async {
+    final stored = _gatherings[gatheringId];
+    if (stored == null) {
+      throw ArgumentError.value(gatheringId, 'gatheringId', 'Unknown');
+    }
+    final ids = stored.paidParticipantIds.toSet();
+    if (paid) {
+      ids.add(participantId);
+    } else {
+      ids.remove(participantId);
+    }
+    _gatherings[gatheringId] = stored.copyWith(paidParticipantIds: ids);
+  }
 
   static List<GatheringSummary> _summaries(Iterable<Gathering> gatherings) =>
       newestFirst([

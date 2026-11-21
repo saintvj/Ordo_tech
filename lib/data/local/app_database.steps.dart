@@ -303,8 +303,149 @@ i1.GeneratedColumn<int> _column_15(String aliasedName) =>
       type: i1.DriftSqlType.int,
       $customConstraints: 'NOT NULL',
     );
+
+final class Schema3 extends i0.VersionedSchema {
+  Schema3({required super.database}) : super(version: 3);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    gatherings,
+    menuCategories,
+    menuItems,
+    participants,
+    orderLines,
+  ];
+  late final Shape4 gatherings = Shape4(
+    source: i0.VersionedTable(
+      entityName: 'gatherings',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)'],
+      columns: [
+        _column_0,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_4,
+        _column_5,
+        _column_16,
+        _column_17,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape1 menuCategories = Shape1(
+    source: i0.VersionedTable(
+      entityName: 'menu_categories',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(gathering_id, id)'],
+      columns: [_column_6, _column_0, _column_1, _column_7],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape2 menuItems = Shape2(
+    source: i0.VersionedTable(
+      entityName: 'menu_items',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(gathering_id, id)',
+        'FOREIGN KEY(gathering_id, category_id)REFERENCES menu_categories(gathering_id, id)ON DELETE CASCADE',
+        'CHECK(price_paise > 0)',
+      ],
+      columns: [
+        _column_6,
+        _column_8,
+        _column_0,
+        _column_1,
+        _column_9,
+        _column_7,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape1 participants = Shape1(
+    source: i0.VersionedTable(
+      entityName: 'participants',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(id)', 'UNIQUE(gathering_id, id)'],
+      columns: [_column_0, _column_6, _column_1, _column_7],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape3 orderLines = Shape3(
+    source: i0.VersionedTable(
+      entityName: 'order_lines',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(id)',
+        'FOREIGN KEY(gathering_id, participant_id)REFERENCES participants(gathering_id, id)ON DELETE CASCADE',
+        'CHECK(unit_price_paise >= 0)',
+        'CHECK(quantity > 0)',
+        'CHECK(served_quantity BETWEEN 0 AND quantity)',
+      ],
+      columns: [
+        _column_0,
+        _column_6,
+        _column_10,
+        _column_11,
+        _column_12,
+        _column_13,
+        _column_14,
+        _column_15,
+        _column_7,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+}
+
+class Shape4 extends i0.VersionedTable {
+  Shape4({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get id =>
+      columnsByName['id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get name =>
+      columnsByName['name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get restaurantName =>
+      columnsByName['restaurant_name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get hostName =>
+      columnsByName['host_name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get status =>
+      columnsByName['status']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get billConfigJson =>
+      columnsByName['bill_config_json']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get settlementsJson =>
+      columnsByName['settlements_json']! as i1.GeneratedColumn<String>;
+}
+
+i1.GeneratedColumn<String> _column_16(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'bill_config_json',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<String> _column_17(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'settlements_json',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
+  required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -313,6 +454,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from1To2(migrator, schema);
         return 2;
+      case 2:
+        final schema = Schema3(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from2To3(migrator, schema);
+        return 3;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -321,6 +467,7 @@ i0.MigrationStepWithVersion migrationSteps({
 
 i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
+  required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
 }) => i0.VersionedSchema.stepByStepHelper(
-  step: migrationSteps(from1To2: from1To2),
+  step: migrationSteps(from1To2: from1To2, from2To3: from2To3),
 );

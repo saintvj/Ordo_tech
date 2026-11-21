@@ -22,6 +22,13 @@ class Gatherings extends Table {
   /// [GatheringStatus.name], e.g. `ordering`.
   TextColumn get status => text()();
 
+  /// [BillConfig] as JSON, or null for a gathering saved before Stage 6
+  /// (loaded as [BillConfig.defaults]).
+  TextColumn get billConfigJson => text().nullable()();
+
+  /// JSON array of participant ids the host has marked paid, or null.
+  TextColumn get settlementsJson => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -122,7 +129,7 @@ class AppDatabase extends _$AppDatabase {
   /// `dart run drift_dev make-migrations` to export the new schema to
   /// `drift_schemas/` and generate a step for [migration].
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -181,6 +188,12 @@ class AppDatabase extends _$AppDatabase {
           updates: {},
         );
       }
+    },
+    from2To3: (m, schema) async {
+      // Stage 6 bill config and settlement, both nullable: existing
+      // gatherings keep their data and default to no custom config.
+      await m.addColumn(schema.gatherings, schema.gatherings.billConfigJson);
+      await m.addColumn(schema.gatherings, schema.gatherings.settlementsJson);
     },
   );
 }

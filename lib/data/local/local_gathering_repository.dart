@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
+import '../../domain/bill.dart';
 import '../../domain/models.dart';
 import '../gathering_repository.dart';
 import 'app_database.dart';
@@ -38,6 +41,12 @@ class LocalGatheringRepository implements GatheringRepository {
                 // UTC, so stored times compare by actual moment.
                 createdAt: gathering.createdAt.toUtc(),
                 status: gathering.status.name,
+                billConfigJson: Value(
+                  jsonEncode(gathering.billConfig.toJson()),
+                ),
+                settlementsJson: Value(
+                  jsonEncode(gathering.paidParticipantIds.toList()),
+                ),
               ),
             );
 
@@ -185,6 +194,8 @@ class LocalGatheringRepository implements GatheringRepository {
                 servedQuantity: l.servedQuantity,
               ),
           ]),
+          billConfig: _billConfigOf(row.billConfigJson),
+          paidParticipantIds: _paidIdsOf(row.settlementsJson),
         );
       });
     } catch (e) {
@@ -260,6 +271,61 @@ class LocalGatheringRepository implements GatheringRepository {
     return GatheringList(newestFirst(summaries), unreadableIds: unreadable);
   }
 
+  @override
+  Future<void> updateSettlement(
+    String gatheringId,
+    String participantId,
+    bool paid,
+  ) async {
+    try {
+      await _db.transaction(() async {
+        final row = await (_db.select(
+          _db.gatherings,
+        )..where((t) => t.id.equals(gatheringId))).getSingleOrNull();
+        if (row == null) {
+          throw ArgumentError.value(gatheringId, 'gatheringId', 'Unknown');
+        }
+        // Only the settlement column is touched, so a completed gathering's
+        // menu and orders stay read-only even though this write is allowed.
+        final ids = _paidIdsOf(row.settlementsJson).toSet();
+        if (paid) {
+          ids.add(participantId);
+        } else {
+          ids.remove(participantId);
+        }
+        await (_db.update(
+          _db.gatherings,
+        )..where((t) => t.id.equals(gatheringId))).write(
+          GatheringsCompanion(settlementsJson: Value(jsonEncode(ids.toList()))),
+        );
+      });
+    } on ArgumentError {
+      rethrow;
+    } catch (e) {
+      throw GatheringStorageException(
+        'Could not update settlement for gathering $gatheringId',
+        e,
+      );
+    }
+  }
+
   static GatheringStatus _statusOf(GatheringRow row) =>
       GatheringStatus.values.byName(row.status);
+
+  static BillConfig _billConfigOf(String? json) {
+    if (json == null) return BillConfig.defaults;
+    final decoded = jsonDecode(json);
+    if (decoded is! Map<String, dynamic>) return BillConfig.defaults;
+    return BillConfig.fromJson(decoded);
+  }
+
+  static Set<String> _paidIdsOf(String? json) {
+    if (json == null) return const {};
+    final decoded = jsonDecode(json);
+    if (decoded is! List) return const {};
+    return {
+      for (final id in decoded)
+        if (id is String) id,
+    };
+  }
 }

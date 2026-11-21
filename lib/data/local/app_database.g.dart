@@ -69,6 +69,28 @@ class $GatheringsTable extends Gatherings
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _billConfigJsonMeta = const VerificationMeta(
+    'billConfigJson',
+  );
+  @override
+  late final GeneratedColumn<String> billConfigJson = GeneratedColumn<String>(
+    'bill_config_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _settlementsJsonMeta = const VerificationMeta(
+    'settlementsJson',
+  );
+  @override
+  late final GeneratedColumn<String> settlementsJson = GeneratedColumn<String>(
+    'settlements_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -77,6 +99,8 @@ class $GatheringsTable extends Gatherings
     hostName,
     createdAt,
     status,
+    billConfigJson,
+    settlementsJson,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -138,6 +162,24 @@ class $GatheringsTable extends Gatherings
     } else if (isInserting) {
       context.missing(_statusMeta);
     }
+    if (data.containsKey('bill_config_json')) {
+      context.handle(
+        _billConfigJsonMeta,
+        billConfigJson.isAcceptableOrUnknown(
+          data['bill_config_json']!,
+          _billConfigJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('settlements_json')) {
+      context.handle(
+        _settlementsJsonMeta,
+        settlementsJson.isAcceptableOrUnknown(
+          data['settlements_json']!,
+          _settlementsJsonMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -171,6 +213,14 @@ class $GatheringsTable extends Gatherings
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       )!,
+      billConfigJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}bill_config_json'],
+      ),
+      settlementsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}settlements_json'],
+      ),
     );
   }
 
@@ -192,6 +242,13 @@ class GatheringRow extends DataClass implements Insertable<GatheringRow> {
 
   /// [GatheringStatus.name], e.g. `ordering`.
   final String status;
+
+  /// [BillConfig] as JSON, or null for a gathering saved before Stage 6
+  /// (loaded as [BillConfig.defaults]).
+  final String? billConfigJson;
+
+  /// JSON array of participant ids the host has marked paid, or null.
+  final String? settlementsJson;
   const GatheringRow({
     required this.id,
     required this.name,
@@ -199,6 +256,8 @@ class GatheringRow extends DataClass implements Insertable<GatheringRow> {
     required this.hostName,
     required this.createdAt,
     required this.status,
+    this.billConfigJson,
+    this.settlementsJson,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -209,6 +268,12 @@ class GatheringRow extends DataClass implements Insertable<GatheringRow> {
     map['host_name'] = Variable<String>(hostName);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['status'] = Variable<String>(status);
+    if (!nullToAbsent || billConfigJson != null) {
+      map['bill_config_json'] = Variable<String>(billConfigJson);
+    }
+    if (!nullToAbsent || settlementsJson != null) {
+      map['settlements_json'] = Variable<String>(settlementsJson);
+    }
     return map;
   }
 
@@ -220,6 +285,12 @@ class GatheringRow extends DataClass implements Insertable<GatheringRow> {
       hostName: Value(hostName),
       createdAt: Value(createdAt),
       status: Value(status),
+      billConfigJson: billConfigJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(billConfigJson),
+      settlementsJson: settlementsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(settlementsJson),
     );
   }
 
@@ -235,6 +306,8 @@ class GatheringRow extends DataClass implements Insertable<GatheringRow> {
       hostName: serializer.fromJson<String>(json['hostName']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       status: serializer.fromJson<String>(json['status']),
+      billConfigJson: serializer.fromJson<String?>(json['billConfigJson']),
+      settlementsJson: serializer.fromJson<String?>(json['settlementsJson']),
     );
   }
   @override
@@ -247,6 +320,8 @@ class GatheringRow extends DataClass implements Insertable<GatheringRow> {
       'hostName': serializer.toJson<String>(hostName),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'status': serializer.toJson<String>(status),
+      'billConfigJson': serializer.toJson<String?>(billConfigJson),
+      'settlementsJson': serializer.toJson<String?>(settlementsJson),
     };
   }
 
@@ -257,6 +332,8 @@ class GatheringRow extends DataClass implements Insertable<GatheringRow> {
     String? hostName,
     DateTime? createdAt,
     String? status,
+    Value<String?> billConfigJson = const Value.absent(),
+    Value<String?> settlementsJson = const Value.absent(),
   }) => GatheringRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -264,6 +341,12 @@ class GatheringRow extends DataClass implements Insertable<GatheringRow> {
     hostName: hostName ?? this.hostName,
     createdAt: createdAt ?? this.createdAt,
     status: status ?? this.status,
+    billConfigJson: billConfigJson.present
+        ? billConfigJson.value
+        : this.billConfigJson,
+    settlementsJson: settlementsJson.present
+        ? settlementsJson.value
+        : this.settlementsJson,
   );
   GatheringRow copyWithCompanion(GatheringsCompanion data) {
     return GatheringRow(
@@ -275,6 +358,12 @@ class GatheringRow extends DataClass implements Insertable<GatheringRow> {
       hostName: data.hostName.present ? data.hostName.value : this.hostName,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       status: data.status.present ? data.status.value : this.status,
+      billConfigJson: data.billConfigJson.present
+          ? data.billConfigJson.value
+          : this.billConfigJson,
+      settlementsJson: data.settlementsJson.present
+          ? data.settlementsJson.value
+          : this.settlementsJson,
     );
   }
 
@@ -286,14 +375,24 @@ class GatheringRow extends DataClass implements Insertable<GatheringRow> {
           ..write('restaurantName: $restaurantName, ')
           ..write('hostName: $hostName, ')
           ..write('createdAt: $createdAt, ')
-          ..write('status: $status')
+          ..write('status: $status, ')
+          ..write('billConfigJson: $billConfigJson, ')
+          ..write('settlementsJson: $settlementsJson')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, restaurantName, hostName, createdAt, status);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    restaurantName,
+    hostName,
+    createdAt,
+    status,
+    billConfigJson,
+    settlementsJson,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -303,7 +402,9 @@ class GatheringRow extends DataClass implements Insertable<GatheringRow> {
           other.restaurantName == this.restaurantName &&
           other.hostName == this.hostName &&
           other.createdAt == this.createdAt &&
-          other.status == this.status);
+          other.status == this.status &&
+          other.billConfigJson == this.billConfigJson &&
+          other.settlementsJson == this.settlementsJson);
 }
 
 class GatheringsCompanion extends UpdateCompanion<GatheringRow> {
@@ -313,6 +414,8 @@ class GatheringsCompanion extends UpdateCompanion<GatheringRow> {
   final Value<String> hostName;
   final Value<DateTime> createdAt;
   final Value<String> status;
+  final Value<String?> billConfigJson;
+  final Value<String?> settlementsJson;
   final Value<int> rowid;
   const GatheringsCompanion({
     this.id = const Value.absent(),
@@ -321,6 +424,8 @@ class GatheringsCompanion extends UpdateCompanion<GatheringRow> {
     this.hostName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.status = const Value.absent(),
+    this.billConfigJson = const Value.absent(),
+    this.settlementsJson = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   GatheringsCompanion.insert({
@@ -330,6 +435,8 @@ class GatheringsCompanion extends UpdateCompanion<GatheringRow> {
     required String hostName,
     required DateTime createdAt,
     required String status,
+    this.billConfigJson = const Value.absent(),
+    this.settlementsJson = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -344,6 +451,8 @@ class GatheringsCompanion extends UpdateCompanion<GatheringRow> {
     Expression<String>? hostName,
     Expression<DateTime>? createdAt,
     Expression<String>? status,
+    Expression<String>? billConfigJson,
+    Expression<String>? settlementsJson,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -353,6 +462,8 @@ class GatheringsCompanion extends UpdateCompanion<GatheringRow> {
       if (hostName != null) 'host_name': hostName,
       if (createdAt != null) 'created_at': createdAt,
       if (status != null) 'status': status,
+      if (billConfigJson != null) 'bill_config_json': billConfigJson,
+      if (settlementsJson != null) 'settlements_json': settlementsJson,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -364,6 +475,8 @@ class GatheringsCompanion extends UpdateCompanion<GatheringRow> {
     Value<String>? hostName,
     Value<DateTime>? createdAt,
     Value<String>? status,
+    Value<String?>? billConfigJson,
+    Value<String?>? settlementsJson,
     Value<int>? rowid,
   }) {
     return GatheringsCompanion(
@@ -373,6 +486,8 @@ class GatheringsCompanion extends UpdateCompanion<GatheringRow> {
       hostName: hostName ?? this.hostName,
       createdAt: createdAt ?? this.createdAt,
       status: status ?? this.status,
+      billConfigJson: billConfigJson ?? this.billConfigJson,
+      settlementsJson: settlementsJson ?? this.settlementsJson,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -398,6 +513,12 @@ class GatheringsCompanion extends UpdateCompanion<GatheringRow> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (billConfigJson.present) {
+      map['bill_config_json'] = Variable<String>(billConfigJson.value);
+    }
+    if (settlementsJson.present) {
+      map['settlements_json'] = Variable<String>(settlementsJson.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -413,6 +534,8 @@ class GatheringsCompanion extends UpdateCompanion<GatheringRow> {
           ..write('hostName: $hostName, ')
           ..write('createdAt: $createdAt, ')
           ..write('status: $status, ')
+          ..write('billConfigJson: $billConfigJson, ')
+          ..write('settlementsJson: $settlementsJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2126,6 +2249,8 @@ typedef $$GatheringsTableCreateCompanionBuilder =
       required String hostName,
       required DateTime createdAt,
       required String status,
+      Value<String?> billConfigJson,
+      Value<String?> settlementsJson,
       Value<int> rowid,
     });
 typedef $$GatheringsTableUpdateCompanionBuilder =
@@ -2136,6 +2261,8 @@ typedef $$GatheringsTableUpdateCompanionBuilder =
       Value<String> hostName,
       Value<DateTime> createdAt,
       Value<String> status,
+      Value<String?> billConfigJson,
+      Value<String?> settlementsJson,
       Value<int> rowid,
     });
 
@@ -2252,6 +2379,16 @@ class $$GatheringsTableFilterComposer
 
   ColumnFilters<String> get status => $composableBuilder(
     column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get billConfigJson => $composableBuilder(
+    column: $table.billConfigJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get settlementsJson => $composableBuilder(
+    column: $table.settlementsJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2394,6 +2531,16 @@ class $$GatheringsTableOrderingComposer
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get billConfigJson => $composableBuilder(
+    column: $table.billConfigJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get settlementsJson => $composableBuilder(
+    column: $table.settlementsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$GatheringsTableAnnotationComposer
@@ -2424,6 +2571,16 @@ class $$GatheringsTableAnnotationComposer
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get billConfigJson => $composableBuilder(
+    column: $table.billConfigJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get settlementsJson => $composableBuilder(
+    column: $table.settlementsJson,
+    builder: (column) => column,
+  );
 
   Expression<T> menuCategoriesRefs<T extends Object>(
     Expression<T> Function($$MenuCategoriesTableAnnotationComposer a) f,
@@ -2565,6 +2722,8 @@ class $$GatheringsTableTableManager
                 Value<String> hostName = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<String?> billConfigJson = const Value.absent(),
+                Value<String?> settlementsJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GatheringsCompanion(
                 id: id,
@@ -2573,6 +2732,8 @@ class $$GatheringsTableTableManager
                 hostName: hostName,
                 createdAt: createdAt,
                 status: status,
+                billConfigJson: billConfigJson,
+                settlementsJson: settlementsJson,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2583,6 +2744,8 @@ class $$GatheringsTableTableManager
                 required String hostName,
                 required DateTime createdAt,
                 required String status,
+                Value<String?> billConfigJson = const Value.absent(),
+                Value<String?> settlementsJson = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => GatheringsCompanion.insert(
                 id: id,
@@ -2591,6 +2754,8 @@ class $$GatheringsTableTableManager
                 hostName: hostName,
                 createdAt: createdAt,
                 status: status,
+                billConfigJson: billConfigJson,
+                settlementsJson: settlementsJson,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

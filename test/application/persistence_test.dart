@@ -372,6 +372,10 @@ class _FailingRepository implements GatheringRepository {
   @override
   Future<GatheringList> listUnfinished() async =>
       throw const GatheringStorageException('unreadable');
+
+  @override
+  Future<void> updateSettlement(String g, String p, bool paid) async =>
+      throw const GatheringStorageException('disk full');
 }
 
 class _CountingRepository extends InMemoryGatheringRepository {

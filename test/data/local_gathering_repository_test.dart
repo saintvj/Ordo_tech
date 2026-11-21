@@ -8,6 +8,7 @@ import 'package:ordo/application/gathering_controller.dart';
 import 'package:ordo/data/gathering_repository.dart';
 import 'package:ordo/data/local/app_database.dart';
 import 'package:ordo/data/local/local_gathering_repository.dart';
+import 'package:ordo/domain/bill.dart';
 import 'package:ordo/domain/models.dart';
 import 'package:ordo/domain/temporary_menu.dart';
 
@@ -545,15 +546,15 @@ void main() {
 
   group('schema versioning', () {
     test(
-      'a new database is created at the current schema version (2)',
+      'a new database is created at the current schema version (3)',
       () async {
         open();
         await db!.customSelect('SELECT 1').get(); // opens and runs onCreate
         final version = await db!
             .customSelect('PRAGMA user_version')
             .getSingle();
-        expect(version.data.values.single, 2);
-        expect(db!.schemaVersion, 2);
+        expect(version.data.values.single, 3);
+        expect(db!.schemaVersion, 3);
       },
     );
 
@@ -562,7 +563,7 @@ void main() {
       open();
       await LocalGatheringRepository(db!).save(gathering);
       // Pretend a newer Ordo wrote this file.
-      await db!.customStatement('PRAGMA user_version = 3');
+      await db!.customStatement('PRAGMA user_version = 4');
       await db!.close();
 
       final raw = NativeDatabase(dbFile);
@@ -583,6 +584,80 @@ void main() {
       expect(rows.single['n'], gathering.orderLines.length);
       await check.close();
       db = null;
+    });
+  });
+
+  group('stage 6: bill config and settlement', () {
+    test('bill config round-trips through a reopened database', () async {
+      final gathering = servingGathering().copyWith(
+        billConfig: const BillConfig(
+          cgstBasisPoints: 900,
+          sgstBasisPoints: 900,
+          serviceChargeBasisPoints: 1000,
+          taxInclusive: true,
+          discountPaise: 5000,
+          splitMethod: SplitMethod.splitEqually,
+          excludedParticipantIds: {'someone'},
+        ),
+      );
+      await open().save(gathering);
+      final loaded = (await (await reopen()).load(gathering.id))!;
+
+      final c = loaded.billConfig;
+      expect(c.cgstBasisPoints, 900);
+      expect(c.sgstBasisPoints, 900);
+      expect(c.serviceChargeBasisPoints, 1000);
+      expect(c.taxInclusive, isTrue);
+      expect(c.discountPaise, 5000);
+      expect(c.splitMethod, SplitMethod.splitEqually);
+      expect(c.excludedParticipantIds, {'someone'});
+    });
+
+    test('a pre-stage-6 gathering loads with default config', () async {
+      final gathering = servingGathering();
+      await open().save(gathering);
+      // Blank the new columns to simulate a gathering saved before Stage 6.
+      await db!.customStatement(
+        'UPDATE gatherings SET bill_config_json = NULL, '
+        'settlements_json = NULL WHERE id = ?',
+        [gathering.id],
+      );
+
+      final loaded = (await (await reopen()).load(gathering.id))!;
+      expect(loaded.billConfig.cgstBasisPoints, 250);
+      expect(loaded.billConfig.splitMethod, SplitMethod.payAsYouEat);
+      expect(loaded.paidParticipantIds, isEmpty);
+    });
+
+    test('settlement persists after restart, orders stay read-only', () async {
+      final completed = servingGathering().copyWith(
+        status: GatheringStatus.completed,
+      );
+      final pid = completed.participants.first.id;
+      var repo = open();
+      await repo.save(completed);
+
+      // Mark paid after completion, through the narrow method only.
+      await repo.updateSettlement(completed.id, pid, true);
+
+      repo = await reopen();
+      var loaded = (await repo.load(completed.id))!;
+      expect(loaded.paidParticipantIds, {pid});
+      // The completed gathering's orders are unchanged by the settlement write.
+      expect(loaded.orderLines, hasLength(completed.orderLines.length));
+
+      // Toggling back to pending also persists.
+      await repo.updateSettlement(completed.id, pid, false);
+      loaded = (await (await reopen()).load(completed.id))!;
+      expect(loaded.paidParticipantIds, isEmpty);
+    });
+
+    test('updateSettlement on an unknown gathering throws', () async {
+      final repo = open();
+      await expectLater(
+        repo.updateSettlement('nope', 'p1', true),
+        throwsArgumentError,
+      );
     });
   });
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'bill.dart';
+
 /// Lifecycle of a gathering. Each action in [GatheringController] is only
 /// allowed in one of these states.
 ///
@@ -124,6 +126,8 @@ class Gathering {
     required this.menu,
     this.participants = const [],
     this.orderLines = const [],
+    this.billConfig = BillConfig.defaults,
+    this.paidParticipantIds = const {},
   });
 
   final String id;
@@ -135,6 +139,14 @@ class Gathering {
   final Menu menu;
   final List<Participant> participants;
   final List<OrderLine> orderLines;
+
+  /// Tax, charge, discount and split-method settings for this gathering's
+  /// bill. Chosen by the host before the gathering is completed.
+  final BillConfig billConfig;
+
+  /// Ids of participants the host has marked as having paid. A participant
+  /// not in this set is still pending.
+  final Set<String> paidParticipantIds;
 
   Participant? findParticipant(String id) {
     for (final p in participants) {
@@ -156,6 +168,8 @@ class Gathering {
     Menu? menu,
     List<Participant>? participants,
     List<OrderLine>? orderLines,
+    BillConfig? billConfig,
+    Set<String>? paidParticipantIds,
   }) => Gathering(
     id: id,
     createdAt: createdAt,
@@ -166,6 +180,8 @@ class Gathering {
     menu: menu ?? this.menu,
     participants: participants ?? this.participants,
     orderLines: orderLines ?? this.orderLines,
+    billConfig: billConfig ?? this.billConfig,
+    paidParticipantIds: paidParticipantIds ?? this.paidParticipantIds,
   );
 }
 

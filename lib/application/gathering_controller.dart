@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/gathering_repository.dart';
+import '../domain/bill.dart';
 import '../domain/models.dart';
 
 final gatheringProvider = NotifierProvider<GatheringController, Gathering?>(
@@ -449,5 +450,14 @@ class GatheringController extends Notifier<Gathering?> {
         ]),
       ),
     );
+  }
+
+  /// Sets the bill's tax, charge, discount and split configuration. Allowed
+  /// while serving, before the gathering is completed. Throws
+  /// [ArgumentError] if the config is invalid.
+  void setBillConfig(BillConfig config) {
+    _requireStatus(GatheringStatus.serving);
+    config.validate();
+    _update(_current.copyWith(billConfig: config));
   }
 }

@@ -8,6 +8,7 @@ import 'generated/schema.dart';
 
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v2.dart' as v2;
+import 'generated/schema_v3.dart' as v3;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -232,6 +233,42 @@ void main() {
           expectedNewOrderLinesData,
           await newDb.select(newDb.orderLines).get(),
         );
+      },
+    );
+  });
+
+  // The v2 -> v3 migration only adds two nullable bill columns. Existing
+  // gatherings keep all their data and get null for the new columns.
+  test('migration from v2 to v3 preserves gatherings, new columns null', () {
+    final oldGatherings = <v2.GatheringsData>[
+      const v2.GatheringsData(
+        id: 'g1',
+        name: 'Brunch',
+        restaurantName: 'MTR',
+        hostName: 'Asha',
+        createdAt: '2026-11-08T13:35:00.000Z',
+        status: 'completed',
+      ),
+    ];
+
+    return verifier.testWithDataIntegrity(
+      oldVersion: 2,
+      newVersion: 3,
+      createOld: v2.DatabaseAtV2.new,
+      createNew: v3.DatabaseAtV3.new,
+      openTestedDatabase: AppDatabase.new,
+      createItems: (batch, oldDb) {
+        batch.insertAll(oldDb.gatherings, oldGatherings);
+      },
+      validateItems: (newDb) async {
+        final rows = await newDb.select(newDb.gatherings).get();
+        expect(rows.length, 1);
+        final row = rows.single;
+        expect(row.id, 'g1');
+        expect(row.name, 'Brunch');
+        expect(row.status, 'completed');
+        expect(row.billConfigJson, null);
+        expect(row.settlementsJson, null);
       },
     );
   });
